@@ -14,6 +14,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import org.jsoup.Jsoup;
 
 public class DetailActivity extends AppCompatActivity {
     private TextView articleTitle, articleContent;
@@ -68,15 +69,14 @@ public class DetailActivity extends AppCompatActivity {
                     // Очень простая логика для поиска основного контента
                     if (line.contains("page-content")) isContentStarted = true;
                     if (isContentStarted) {
-                        sb.append(line).append("
-");
+                        sb.append(line).append("\n");
                     }
                     if (line.contains("page-info-container")) break;
                 }
                 reader.close();
 
-                // Очистка от HTML
-                String cleanText = cleanHtml(sb.toString());
+                // Очистка от HTML с помощью Jsoup
+                String cleanText = Jsoup.parse(sb.toString()).text();
                 
                 dbHelper.saveArticle(scp.getNumber(), scp.getTitle(), cleanText);
 
