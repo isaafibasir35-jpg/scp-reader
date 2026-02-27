@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SCP Reader</string>
+    <string name="search_hint">Поиск по номеру или названию</string>
+    <string name="manual_input_hint">Введите номер (например, 2521)</string>
+    <string name="add_button_content_description">Добавить объект в список</string>
+    <string name="categories_menu">Категории</string>
+    <string name="read_more_content_description">Открыть статью </string>
+    <string name="loading_text">Загрузка статьи...</string>
+    <string name="error_loading">Ошибка загрузки. Проверьте интернет.</string>
+</resources>
