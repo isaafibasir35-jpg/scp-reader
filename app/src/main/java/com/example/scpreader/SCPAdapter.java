@@ -1,6 +1,5 @@
 package com.example.scpreader;
 
-import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -82,9 +81,11 @@ public class SCPAdapter extends RecyclerView.Adapter<SCPAdapter.ViewHolder> impl
             @Override
             @SuppressWarnings("unchecked")
             protected void publishResults(CharSequence constraint, FilterResults results) {
-                scpList.clear();
-                scpList.addAll((List) results.values);
-                notifyDataSetChanged();
+                if (results != null && results.values != null) {
+                    scpList.clear();
+                    scpList.addAll((List<SCPObject>) results.values);
+                    notifyDataSetChanged();
+                }
             }
         };
     }

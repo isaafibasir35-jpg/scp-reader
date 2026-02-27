@@ -8,12 +8,12 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
+import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 import org.jsoup.Jsoup;
 
 public class DetailActivity extends AppCompatActivity {
@@ -23,6 +23,7 @@ public class DetailActivity extends AppCompatActivity {
     private SCPObject scp;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private final OkHttpClient client = new OkHttpClient();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,35 +57,34 @@ public class DetailActivity extends AppCompatActivity {
         executor.execute(() -> {
             try {
                 String number = scp.getNumber().toLowerCase().replace("scp-", "");
-                URL url = new URL("https://scpfoundation.net/scp-" + number);
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("GET");
-
-                BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream(), "UTF-8"));
-                StringBuilder sb = new StringBuilder();
-                String line;
-                boolean isContentStarted = false;
-
-                while ((line = reader.readLine()) != null) {
-                    // Очень простая логика для поиска основного контента
-                    if (line.contains("page-content")) isContentStarted = true;
-                    if (isContentStarted) {
-                        sb.append(line).append("\n");
-                    }
-                    if (line.contains("page-info-container")) break;
-                }
-                reader.close();
-
-                // Очистка от HTML с помощью Jsoup
-                String cleanText = Jsoup.parse(sb.toString()).text();
+                String url = "https://scpfoundation.net/scp-" + number;
                 
-                dbHelper.saveArticle(scp.getNumber(), scp.getTitle(), cleanText);
+                Request request = new Request.Builder()
+                        .url(url)
+                        .build();
 
-                mainHandler.post(() -> {
-                    progressBar.setVisibility(View.GONE);
-                    articleContent.setText(cleanText);
-                    articleContent.announceForAccessibility("Статья загружена и сохранена.");
-                });
+                try (Response response = client.newCall(request).execute()) {
+                    if (!response.isSuccessful()) throw new IOException("Unexpected code " + response);
+
+                    String html = response.body().string();
+                    
+                    // Очистка от HTML с помощью Jsoup
+                    String cleanText = Jsoup.parse(html).select("#page-content").text();
+                    
+                    // Если #page-content не найден, попробуем взять весь текст
+                    if (cleanText.isEmpty()) {
+                        cleanText = Jsoup.parse(html).text();
+                    }
+
+                    final String finalCleanText = cleanText;
+                    dbHelper.saveArticle(scp.getNumber(), scp.getTitle(), finalCleanText);
+
+                    mainHandler.post(() -> {
+                        progressBar.setVisibility(View.GONE);
+                        articleContent.setText(finalCleanText);
+                        articleContent.announceForAccessibility("Статья загружена и сохранена.");
+                    });
+                }
 
             } catch (Exception e) {
                 mainHandler.post(() -> {
@@ -97,20 +97,20 @@ public class DetailActivity extends AppCompatActivity {
 
     // Метод для очистки HTML от мусора
     private String cleanHtml(String html) {
+        if (html == null) return "";
         // Убираем теги <script> и <style>
-        html = html.replaceAll("<script[\s\S]*?</script>", "");
-        html = html.replaceAll("<style[\s\S]*?</style>", "");
+        html = html.replaceAll("<script[\\s\\S]*?</script>", "");
+        html = html.replaceAll("<style[\\s\\S]*?</style>", "");
         // Убираем все остальные теги
         html = html.replaceAll("<[^>]*>", "");
         // Декодируем некоторые сущности
         html = html.replace("&nbsp;", " ")
-                   .replace("&quot;", """)
+                   .replace("&quot;", "\"")
                    .replace("&apos;", "'")
                    .replace("&lt;", "<")
                    .replace("&gt;", ">")
                    .replace("&amp;", "&");
         // Убираем лишние пустые строки
-        return html.replaceAll("(?m)^[ 	]*?
-", "").trim();
+        return html.replaceAll("(?m)^[ \t]*?\r?\n", "").trim();
     }
 }
