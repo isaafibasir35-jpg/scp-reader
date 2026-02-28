@@ -79,6 +79,8 @@ public class DetailActivity extends AppCompatActivity {
     }
 
     private void saveOffline() {
+        final String userAgent = webView.getSettings().getUserAgentString();
+        final String cookies = android.webkit.CookieManager.getInstance().getCookie("https://scpfoundation.net/");
         new Thread(() -> {
             try {
                 String number = scp.getNumber().toLowerCase().replace("scp-", "");
@@ -88,9 +90,7 @@ public class DetailActivity extends AppCompatActivity {
                 connection.setRequestMethod("GET");
                 connection.setConnectTimeout(5000);
                 connection.setReadTimeout(5000);
-                String agent = webView.getSettings().getUserAgentString();
-                connection.setRequestProperty("User-Agent", agent);
-                String cookies = android.webkit.CookieManager.getInstance().getCookie("https://scpfoundation.net/");
+                connection.setRequestProperty("User-Agent", userAgent);
                 if (cookies != null) {
                     connection.setRequestProperty("Cookie", cookies);
                 }
