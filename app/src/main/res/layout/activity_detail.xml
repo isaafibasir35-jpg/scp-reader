@@ -4,12 +4,28 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
-    <Button
-        android:id="@+id/btnDownload"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Скачать"
-        android:contentDescription="Скачать статью для офлайн чтения" />
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/btnDownload"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Скачать"
+            android:contentDescription="Скачать статью для офлайн чтения" />
+
+        <Button
+            android:id="@+id/btnUpdate"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Обновить"
+            android:contentDescription="Обновить страницу" />
+
+    </LinearLayout>
 
     <RelativeLayout
         android:layout_width="match_parent"

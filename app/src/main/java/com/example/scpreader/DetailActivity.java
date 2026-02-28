@@ -15,13 +15,20 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.content.Intent;
 import android.widget.Button;
 import android.widget.Toast;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileWriter;
+import java.io.InputStreamReader;
 import java.io.Serializable;
+import java.net.HttpURLConnection;
+import java.net.URL;
 
 public class DetailActivity extends AppCompatActivity {
     private WebView webView;
     private ProgressBar progressBar;
     private Button btnDownload;
+    private Button btnUpdate;
     private SCPObject scp;
 
     @Override
@@ -32,6 +39,7 @@ public class DetailActivity extends AppCompatActivity {
         webView = findViewById(R.id.webview);
         progressBar = findViewById(R.id.progressBar);
         btnDownload = findViewById(R.id.btnDownload);
+        btnUpdate = findViewById(R.id.btnUpdate);
 
         Intent intent = getIntent();
         if (intent != null && intent.hasExtra("scp")) {
@@ -47,11 +55,15 @@ public class DetailActivity extends AppCompatActivity {
                 saveOffline();
             });
 
+            btnUpdate.setOnClickListener(v -> {
+                webView.reload();
+            });
+
             btnDownload.setOnLongClickListener(v -> {
-                File file = new File(getFilesDir(), scp.getNumber() + ".xml.webarchive");
+                File file = new File(getFilesDir(), scp.getNumber() + ".html");
                 if (file.exists()) {
                     if (file.delete()) {
-                        Toast.makeText(this, "Файл удален", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, "Файл удален", Toast.makeText.LENGTH_SHORT).show();
                         String number = scp.getNumber().toLowerCase().replace("scp-", "");
                         String url = "https://scpfoundation.net/scp-" + number;
                         webView.loadUrl(url);
@@ -62,16 +74,46 @@ public class DetailActivity extends AppCompatActivity {
 
             if (intent.getBooleanExtra("auto_download", false)) {
                 // Будет вызвано после загрузки страницы в onPageFinished для надежности
-                // или сразу здесь, если мы уверены в WebView.
-                // Но лучше дождаться окончания загрузки, если это новый файл.
             }
         }
     }
 
     private void saveOffline() {
-        File file = new File(getFilesDir(), scp.getNumber() + ".xml.webarchive");
-        webView.saveWebArchive(file.getAbsolutePath());
-        Toast.makeText(this, "Статья сохранена", Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            try {
+                String number = scp.getNumber().toLowerCase().replace("scp-", "");
+                String urlString = "https://scpfoundation.net/scp-" + number;
+                URL url = new URL(urlString);
+                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                connection.setRequestMethod("GET");
+                connection.setConnectTimeout(5000);
+                connection.setReadTimeout(5000);
+                connection.connect();
+
+                if (connection.getResponseCode() == HttpURLConnection.HTTP_OK) {
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+                    StringBuilder stringBuilder = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        stringBuilder.append(line).append("\n");
+                    }
+                    reader.close();
+
+                    File file = new File(getFilesDir(), scp.getNumber() + ".html");
+                    FileWriter writer = new FileWriter(file);
+                    writer.write(stringBuilder.toString());
+                    writer.close();
+
+                    runOnUiThread(() -> Toast.makeText(DetailActivity.this, "Статья сохранена", Toast.LENGTH_SHORT).show());
+                } else {
+                    runOnUiThread(() -> Toast.makeText(DetailActivity.this, "Ошибка при скачивании: " + connection.getResponseCode(), Toast.LENGTH_SHORT).show());
+                }
+                connection.disconnect();
+            } catch (Exception e) {
+                e.printStackTrace();
+                runOnUiThread(() -> Toast.makeText(DetailActivity.this, "Ошибка: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            }
+        }).start();
     }
 
     private void setupWebView() {
@@ -116,15 +158,22 @@ public class DetailActivity extends AppCompatActivity {
     }
 
     private void loadArticle() {
-        File file = new File(getFilesDir(), scp.getNumber() + ".xml.webarchive");
+        File file = new File(getFilesDir(), scp.getNumber() + ".html");
         if (file.exists()) {
-            if (file.length() == 0) {
-                file.delete();
+            try {
+                StringBuilder content = new StringBuilder();
+                BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file)));
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    content.append(line).append("\n");
+                }
+                reader.close();
+                webView.loadDataWithBaseURL("https://scpfoundation.net/", content.toString(), "text/html", "UTF-8", null);
+            } catch (Exception e) {
+                e.printStackTrace();
                 String number = scp.getNumber().toLowerCase().replace("scp-", "");
                 String url = "https://scpfoundation.net/scp-" + number;
                 webView.loadUrl(url);
-            } else {
-                webView.loadUrl("file://" + file.getAbsolutePath());
             }
         } else {
             String number = scp.getNumber().toLowerCase().replace("scp-", "");
