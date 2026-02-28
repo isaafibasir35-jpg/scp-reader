@@ -63,7 +63,7 @@ public class DetailActivity extends AppCompatActivity {
                 File file = new File(getFilesDir(), scp.getNumber() + ".html");
                 if (file.exists()) {
                     if (file.delete()) {
-                        Toast.makeText(this, "Файл удален", Toast.makeText.LENGTH_SHORT).show();
+                        Toast.makeText(this, "Файл удален", Toast.LENGTH_SHORT).show();
                         String number = scp.getNumber().toLowerCase().replace("scp-", "");
                         String url = "https://scpfoundation.net/scp-" + number;
                         webView.loadUrl(url);
