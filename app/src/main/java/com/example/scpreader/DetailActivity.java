@@ -65,13 +65,7 @@ public class DetailActivity extends AppCompatActivity {
             public void onPageFinished(WebView view, String url) {
                 progressBar.setVisibility(View.GONE);
                 // Инъекция JS для скрытия визуального мусора
-                view.evaluateJavascript("try { " +
-                        "document.getElementById('header').style.display='none'; " +
-                        "document.getElementById('top-bar').style.display='none'; " +
-                        "document.getElementById('side-bar').style.display='none'; " +
-                        "document.getElementById('footer').style.display='none'; " +
-                        "document.getElementById('page-options-container').style.display='none'; " +
-                        "} catch(e) {}", null);
+                view.evaluateJavascript("try { document.getElementById('header').style.display='none'; document.getElementById('top-bar').style.display='none'; document.getElementById('side-bar').style.display='none'; document.getElementById('footer').style.display='none'; document.getElementById('page-options-container').style.display='none'; } catch(e) {}", null);
             }
 
             @SuppressWarnings("deprecation")
