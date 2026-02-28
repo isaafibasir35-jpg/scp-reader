@@ -107,12 +107,12 @@ public class DetailActivity extends AppCompatActivity {
 
                     runOnUiThread(() -> Toast.makeText(DetailActivity.this, "Статья сохранена", Toast.LENGTH_SHORT).show());
                 } else {
-                    runOnUiThread(() -> Toast.makeText(DetailActivity.this, "Ошибка при скачивании", Toast.LENGTH_SHORT).show());
+                    final int code = connection.getResponseCode();
+                    runOnUiThread(() -> Toast.makeText(DetailActivity.this, "Ошибка при скачивании, код: " + code, Toast.LENGTH_SHORT).show());
                 }
                 connection.disconnect();
-            } catch (final Exception e) {
-                e.printStackTrace();
-                runOnUiThread(() -> Toast.makeText(DetailActivity.this, "Ошибка: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            } catch (Exception e) {
+                runOnUiThread(() -> Toast.makeText(DetailActivity.this, "Ошибка: " + e.toString(), Toast.LENGTH_SHORT).show());
             }
         }).start();
     }
