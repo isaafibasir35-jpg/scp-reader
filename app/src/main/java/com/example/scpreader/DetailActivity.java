@@ -86,6 +86,7 @@ public class DetailActivity extends AppCompatActivity {
                 URL url = new URL(urlString);
                 HttpURLConnection connection = (HttpURLConnection) url.openConnection();
                 connection.setRequestMethod("GET");
+                connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 13; SM-S901B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile Safari/537.36");
                 connection.setConnectTimeout(5000);
                 connection.setReadTimeout(5000);
                 connection.connect();
@@ -109,7 +110,7 @@ public class DetailActivity extends AppCompatActivity {
                     runOnUiThread(() -> Toast.makeText(DetailActivity.this, "Ошибка при скачивании", Toast.LENGTH_SHORT).show());
                 }
                 connection.disconnect();
-            } catch (Exception e) {
+            } catch (final Exception e) {
                 e.printStackTrace();
                 runOnUiThread(() -> Toast.makeText(DetailActivity.this, "Ошибка: " + e.getMessage(), Toast.LENGTH_SHORT).show());
             }
