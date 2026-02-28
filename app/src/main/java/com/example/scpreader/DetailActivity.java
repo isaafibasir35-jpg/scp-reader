@@ -86,9 +86,14 @@ public class DetailActivity extends AppCompatActivity {
                 URL url = new URL(urlString);
                 HttpURLConnection connection = (HttpURLConnection) url.openConnection();
                 connection.setRequestMethod("GET");
-                connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 13; SM-S901B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile Safari/537.36");
                 connection.setConnectTimeout(5000);
                 connection.setReadTimeout(5000);
+                String agent = webView.getSettings().getUserAgentString();
+                connection.setRequestProperty("User-Agent", agent);
+                String cookies = android.webkit.CookieManager.getInstance().getCookie("https://scpfoundation.net/");
+                if (cookies != null) {
+                    connection.setRequestProperty("Cookie", cookies);
+                }
                 connection.connect();
 
                 if (connection.getResponseCode() == HttpURLConnection.HTTP_OK) {
