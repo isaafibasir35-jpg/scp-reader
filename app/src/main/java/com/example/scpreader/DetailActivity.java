@@ -38,6 +38,23 @@ public class DetailActivity extends AppCompatActivity {
         settings.setUseWideViewPort(true);
         settings.setUserAgentString("Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36");
 
+        // Настройки кэширования для офлайн-режима
+        settings.setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
+        settings.setAllowFileAccess(true);
+        settings.setDomStorageEnabled(true);
+        
+        // AppCache (устарело, но для старых API полезно)
+        settings.setDatabaseEnabled(true);
+        String cachePath = getApplicationContext().getCacheDir().getAbsolutePath();
+        settings.setDatabasePath(cachePath);
+        
+        // Включаем AppCache по просьбе пользователя
+        settings.setAppCacheEnabled(true);
+        settings.setAppCachePath(cachePath);
+        
+        // Современный способ кэширования через DOM Storage и стандартный кэш браузера
+        // LOAD_CACHE_ELSE_NETWORK заставит WebView брать данные из кэша, если сети нет.
+
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
@@ -55,6 +72,13 @@ public class DetailActivity extends AppCompatActivity {
                         "document.getElementById('footer').style.display='none'; " +
                         "document.getElementById('page-options-container').style.display='none'; " +
                         "} catch(e) {}", null);
+            }
+
+            @SuppressWarnings("deprecation")
+            @Override
+            public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+                // Если ошибка связана с отсутствием сети, но кэш может сработать, 
+                // мы просто полагаемся на LOAD_CACHE_ELSE_NETWORK.
             }
         });
     }

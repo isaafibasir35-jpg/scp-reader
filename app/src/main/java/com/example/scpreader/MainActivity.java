@@ -18,11 +18,15 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
     private List<SCPObject> scpList;
     private EditText searchField, manualInput;
     private Button addButton;
+    private DatabaseHelper dbHelper;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        // Инициализация БД
+        dbHelper = new DatabaseHelper(this);
 
         // Инициализация UI
         recyclerView = findViewById(R.id.scpList);
@@ -53,64 +57,90 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
                 if (!number.toLowerCase().startsWith("scp-")) {
                     number = "SCP-" + number;
                 }
-                openDetail(new SCPObject(number, "Внешний объект"));
+                SCPObject newScp = new SCPObject(number, "Добавленный объект");
+                dbHelper.addSCP(newScp);
+                refreshList();
+                openDetail(newScp);
             }
         });
     }
 
+    private void refreshList() {
+        initScpList();
+        adapter.updateList(scpList);
+    }
+
     private void initScpList() {
         scpList = new ArrayList<>();
+        // Сначала загружаем из БД (те, что добавил пользователь)
+        scpList.addAll(dbHelper.getAllSCPs());
+        
         // Список 50 популярных объектов
-        scpList.add(new SCPObject("SCP-173", "Скульптура"));
-        scpList.add(new SCPObject("SCP-049", "Чумной доктор"));
-        scpList.add(new SCPObject("SCP-087", "Лестница"));
-        scpList.add(new SCPObject("SCP-096", "Скромник"));
-        scpList.add(new SCPObject("SCP-106", "Старик"));
-        scpList.add(new SCPObject("SCP-682", "Неуязвимая рептилия"));
-        scpList.add(new SCPObject("SCP-914", "Часовой механизм"));
-        scpList.add(new SCPObject("SCP-999", "Щекочущий монстр"));
-        scpList.add(new SCPObject("SCP-079", "Старый ИИ"));
-        scpList.add(new SCPObject("SCP-035", "Маска одержимости"));
-        scpList.add(new SCPObject("SCP-076", "Авель"));
-        scpList.add(new SCPObject("SCP-073", "Каин"));
-        scpList.add(new SCPObject("SCP-2521", "●●|●●●●●|●●|●"));
-        scpList.add(new SCPObject("SCP-3000", "Ананта-Шеша"));
-        scpList.add(new SCPObject("SCP-3008", "Абсолютно нормальная старая добрая Икея"));
-        scpList.add(new SCPObject("SCP-5000", "Почему?"));
-        scpList.add(new SCPObject("SCP-001", "Страж Врат"));
-        scpList.add(new SCPObject("SCP-055", "[ДАННЫЕ УДАЛЕНЫ]"));
-        scpList.add(new SCPObject("SCP-093", "Объект из Красного моря"));
-        scpList.add(new SCPObject("SCP-1762", "Куда делись драконы?"));
-        scpList.add(new SCPObject("SCP-2317", "Пожиратель миров"));
-        scpList.add(new SCPObject("SCP-231", "Семь невест для семи рогов"));
-        scpList.add(new SCPObject("SCP-2935", "О Смерть"));
-        scpList.add(new SCPObject("SCP-3999", "Я есть центр всего, что происходит со мной"));
-        scpList.add(new SCPObject("SCP-4999", "Тот, кто присматривает за нами"));
-        scpList.add(new SCPObject("SCP-2000", "Деус Экс Машина"));
-        scpList.add(new SCPObject("SCP-1471", "MalO ver1.0.0"));
-        scpList.add(new SCPObject("SCP-012", "Скверная композиция"));
-        scpList.add(new SCPObject("SCP-811", "Болотница"));
-        scpList.add(new SCPObject("SCP-1048", "Мишка-строитель"));
-        scpList.add(new SCPObject("SCP-239", "Дитя-ведьма"));
-        scpList.add(new SCPObject("SCP-008", "Зомби-вирус"));
-        scpList.add(new SCPObject("SCP-015", "Кошмарный трубопровод"));
-        scpList.add(new SCPObject("SCP-053", "Девочка"));
-        scpList.add(new SCPObject("SCP-066", "Игрушка Эрика"));
-        scpList.add(new SCPObject("SCP-166", "Суккуб-подросток"));
-        scpList.add(new SCPObject("SCP-2316", "Вы не узнаете тела в воде"));
-        scpList.add(new SCPObject("SCP-3199", "Люди опровергнутые"));
-        scpList.add(new SCPObject("SCP-3812", "Голос позади меня"));
-        scpList.add(new SCPObject("SCP-4666", "Йольский парень"));
-        scpList.add(new SCPObject("SCP-4000", "Табу"));
-        scpList.add(new SCPObject("SCP-408", "Иллюзорные бабочки"));
-        scpList.add(new SCPObject("SCP-420-J", "Самая лучшая [УДАЛЕНО] в мире"));
-        scpList.add(new SCPObject("SCP-426", "Я — тостер"));
-        scpList.add(new SCPObject("SCP-458", "Бесконечная коробка пиццы"));
-        scpList.add(new SCPObject("SCP-500", "Панацея"));
-        scpList.add(new SCPObject("SCP-504", "Критические помидоры"));
-        scpList.add(new SCPObject("SCP-513", "Коровье ботало"));
-        scpList.add(new SCPObject("SCP-610", "Ненавидящая плоть"));
-        scpList.add(new SCPObject("SCP-939", "Со множеством голосов"));
+        List<SCPObject> defaultList = new ArrayList<>();
+        defaultList.add(new SCPObject("SCP-173", "Скульптура"));
+        defaultList.add(new SCPObject("SCP-049", "Чумной доктор"));
+        defaultList.add(new SCPObject("SCP-087", "Лестница"));
+        defaultList.add(new SCPObject("SCP-096", "Скромник"));
+        defaultList.add(new SCPObject("SCP-106", "Старик"));
+        defaultList.add(new SCPObject("SCP-682", "Неуязвимая рептилия"));
+        defaultList.add(new SCPObject("SCP-914", "Часовой механизм"));
+        defaultList.add(new SCPObject("SCP-999", "Щекочущий монстр"));
+        defaultList.add(new SCPObject("SCP-079", "Старый ИИ"));
+        defaultList.add(new SCPObject("SCP-035", "Маска одержимости"));
+        defaultList.add(new SCPObject("SCP-076", "Авель"));
+        defaultList.add(new SCPObject("SCP-073", "Каин"));
+        defaultList.add(new SCPObject("SCP-2521", "●●|●●●●●|●●|●"));
+        defaultList.add(new SCPObject("SCP-3000", "Ананта-Шеша"));
+        defaultList.add(new SCPObject("SCP-3008", "Абсолютно нормальная старая добрая Икея"));
+        defaultList.add(new SCPObject("SCP-5000", "Почему?"));
+        defaultList.add(new SCPObject("SCP-001", "Страж Врат"));
+        defaultList.add(new SCPObject("SCP-055", "[ДАННЫЕ УДАЛЕНЫ]"));
+        defaultList.add(new SCPObject("SCP-093", "Объект из Красного моря"));
+        defaultList.add(new SCPObject("SCP-1762", "Куда делись драконы?"));
+        defaultList.add(new SCPObject("SCP-2317", "Пожиратель миров"));
+        defaultList.add(new SCPObject("SCP-231", "Семь невест для семи рогов"));
+        defaultList.add(new SCPObject("SCP-2935", "О Смерть"));
+        defaultList.add(new SCPObject("SCP-3999", "Я есть центр всего, что происходит со мной"));
+        defaultList.add(new SCPObject("SCP-4999", "Тот, кто присматривает за нами"));
+        defaultList.add(new SCPObject("SCP-2000", "Деус Экс Машина"));
+        defaultList.add(new SCPObject("SCP-1471", "MalO ver1.0.0"));
+        defaultList.add(new SCPObject("SCP-012", "Скверная композиция"));
+        defaultList.add(new SCPObject("SCP-811", "Болотница"));
+        defaultList.add(new SCPObject("SCP-1048", "Мишка-строитель"));
+        defaultList.add(new SCPObject("SCP-239", "Дитя-ведьма"));
+        defaultList.add(new SCPObject("SCP-008", "Зомби-вирус"));
+        defaultList.add(new SCPObject("SCP-015", "Кошмарный трубопровод"));
+        defaultList.add(new SCPObject("SCP-053", "Девочка"));
+        defaultList.add(new SCPObject("SCP-066", "Игрушка Эрика"));
+        defaultList.add(new SCPObject("SCP-166", "Суккуб-подросток"));
+        defaultList.add(new SCPObject("SCP-2316", "Вы не узнаете тела в воде"));
+        defaultList.add(new SCPObject("SCP-3199", "Люди опровергнутые"));
+        defaultList.add(new SCPObject("SCP-3812", "Голос позади меня"));
+        defaultList.add(new SCPObject("SCP-4666", "Йольский парень"));
+        defaultList.add(new SCPObject("SCP-4000", "Табу"));
+        defaultList.add(new SCPObject("SCP-408", "Иллюзорные бабочки"));
+        defaultList.add(new SCPObject("SCP-420-J", "Самая лучшая [УДАЛЕНО] в мире"));
+        defaultList.add(new SCPObject("SCP-426", "Я — тостер"));
+        defaultList.add(new SCPObject("SCP-458", "Бесконечная коробка пиццы"));
+        defaultList.add(new SCPObject("SCP-500", "Панацея"));
+        defaultList.add(new SCPObject("SCP-504", "Критические помидоры"));
+        defaultList.add(new SCPObject("SCP-513", "Коровье ботало"));
+        defaultList.add(new SCPObject("SCP-610", "Ненавидящая плоть"));
+        defaultList.add(new SCPObject("SCP-939", "Со множеством голосов"));
+        
+        // Добавляем только те, которых еще нет в списке (уникальность по номеру)
+        for (SCPObject defaultScp : defaultList) {
+            boolean exists = false;
+            for (SCPObject existing : scpList) {
+                if (existing.getNumber().equalsIgnoreCase(defaultScp.getNumber())) {
+                    exists = true;
+                    break;
+                }
+            }
+            if (!exists) {
+                scpList.add(defaultScp);
+            }
+        }
     }
 
     @Override
