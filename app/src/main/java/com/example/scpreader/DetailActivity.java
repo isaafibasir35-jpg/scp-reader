@@ -47,6 +47,19 @@ public class DetailActivity extends AppCompatActivity {
                 saveOffline();
             });
 
+            btnDownload.setOnLongClickListener(v -> {
+                File file = new File(getFilesDir(), scp.getNumber() + ".xml.webarchive");
+                if (file.exists()) {
+                    if (file.delete()) {
+                        Toast.makeText(this, "Файл удален", Toast.LENGTH_SHORT).show();
+                        String number = scp.getNumber().toLowerCase().replace("scp-", "");
+                        String url = "https://scpfoundation.net/scp-" + number;
+                        webView.loadUrl(url);
+                    }
+                }
+                return true;
+            });
+
             if (intent.getBooleanExtra("auto_download", false)) {
                 // Будет вызвано после загрузки страницы в onPageFinished для надежности
                 // или сразу здесь, если мы уверены в WebView.
@@ -63,6 +76,8 @@ public class DetailActivity extends AppCompatActivity {
 
     private void setupWebView() {
         WebSettings settings = webView.getSettings();
+        settings.setAllowFileAccess(true);
+        settings.setAllowContentAccess(true);
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setLoadWithOverviewMode(true);
@@ -71,8 +86,6 @@ public class DetailActivity extends AppCompatActivity {
 
         // Настройки кэширования для офлайн-режима
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
-        settings.setAllowFileAccess(true);
-        settings.setAllowContentAccess(true);
         
         webView.setWebViewClient(new WebViewClient() {
             @Override
@@ -103,6 +116,7 @@ public class DetailActivity extends AppCompatActivity {
     private void loadArticle() {
         File file = new File(getFilesDir(), scp.getNumber() + ".xml.webarchive");
         if (file.exists()) {
+            // file.getAbsolutePath() starts with '/', so file:// + /path = file:///path
             webView.loadUrl("file://" + file.getAbsolutePath());
         } else {
             String number = scp.getNumber().toLowerCase().replace("scp-", "");
