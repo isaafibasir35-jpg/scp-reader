@@ -13,11 +13,15 @@ import android.webkit.WebViewClient;
 import android.widget.ProgressBar;
 import androidx.appcompat.app.AppCompatActivity;
 import android.content.Intent;
+import android.widget.Button;
+import android.widget.Toast;
+import java.io.File;
 import java.io.Serializable;
 
 public class DetailActivity extends AppCompatActivity {
     private WebView webView;
     private ProgressBar progressBar;
+    private Button btnDownload;
     private SCPObject scp;
 
     @Override
@@ -27,6 +31,7 @@ public class DetailActivity extends AppCompatActivity {
 
         webView = findViewById(R.id.webview);
         progressBar = findViewById(R.id.progressBar);
+        btnDownload = findViewById(R.id.btnDownload);
 
         Intent intent = getIntent();
         if (intent != null && intent.hasExtra("scp")) {
@@ -37,7 +42,23 @@ public class DetailActivity extends AppCompatActivity {
             setTitle(scp.getNumber());
             setupWebView();
             loadArticle();
+
+            btnDownload.setOnClickListener(v -> {
+                saveOffline();
+            });
+
+            if (intent.getBooleanExtra("auto_download", false)) {
+                // Будет вызвано после загрузки страницы в onPageFinished для надежности
+                // или сразу здесь, если мы уверены в WebView.
+                // Но лучше дождаться окончания загрузки, если это новый файл.
+            }
         }
+    }
+
+    private void saveOffline() {
+        File file = new File(getFilesDir(), scp.getNumber() + ".xml.webarchive");
+        webView.saveWebArchive(file.getAbsolutePath());
+        Toast.makeText(this, "Статья сохранена", Toast.LENGTH_SHORT).show();
     }
 
     private void setupWebView() {
@@ -49,12 +70,10 @@ public class DetailActivity extends AppCompatActivity {
         settings.setUserAgentString("Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36");
 
         // Настройки кэширования для офлайн-режима
-        settings.setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
+        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
         settings.setAllowFileAccess(true);
+        settings.setAllowContentAccess(true);
         
-        // Современный способ кэширования через DOM Storage и стандартный кэш браузера
-        // LOAD_CACHE_ELSE_NETWORK заставит WebView брать данные из кэша, если сети нет.
-
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
@@ -66,21 +85,30 @@ public class DetailActivity extends AppCompatActivity {
                 progressBar.setVisibility(View.GONE);
                 // Инъекция JS для скрытия визуального мусора
                 view.evaluateJavascript("try { document.getElementById('header').style.display='none'; document.getElementById('top-bar').style.display='none'; document.getElementById('side-bar').style.display='none'; document.getElementById('footer').style.display='none'; document.getElementById('page-options-container').style.display='none'; } catch(e) {}", null);
+                
+                if (getIntent().getBooleanExtra("auto_download", false)) {
+                    getIntent().removeExtra("auto_download"); // Чтобы не качать повторно при пересоздании
+                    saveOffline();
+                }
             }
 
             @SuppressWarnings("deprecation")
             @Override
             public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
-                // Если ошибка связана с отсутствием сети, но кэш может сработать, 
-                // мы просто полагаемся на LOAD_CACHE_ELSE_NETWORK.
+                // Ошибка
             }
         });
     }
 
     private void loadArticle() {
-        String number = scp.getNumber().toLowerCase().replace("scp-", "");
-        String url = "https://scpfoundation.net/scp-" + number;
-        webView.loadUrl(url);
+        File file = new File(getFilesDir(), scp.getNumber() + ".xml.webarchive");
+        if (file.exists()) {
+            webView.loadUrl("file://" + file.getAbsolutePath());
+        } else {
+            String number = scp.getNumber().toLowerCase().replace("scp-", "");
+            String url = "https://scpfoundation.net/scp-" + number;
+            webView.loadUrl(url);
+        }
     }
 
     @Override

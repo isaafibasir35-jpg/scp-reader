@@ -5,6 +5,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Filter;
 import android.widget.Filterable;
+import android.widget.ImageButton;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -18,6 +19,7 @@ public class SCPAdapter extends RecyclerView.Adapter<SCPAdapter.ViewHolder> impl
 
     public interface OnItemClickListener {
         void onItemClick(SCPObject scp);
+        void onDownloadClick(SCPObject scp);
     }
 
     public SCPAdapter(List<SCPObject> scpList, OnItemClickListener listener) {
@@ -43,6 +45,7 @@ public class SCPAdapter extends RecyclerView.Adapter<SCPAdapter.ViewHolder> impl
         holder.itemView.setContentDescription("Объект " + scp.getNumber() + ": " + scp.getTitle() + ". Нажмите для чтения статьи.");
         
         holder.itemView.setOnClickListener(v -> listener.onItemClick(scp));
+        holder.btnDownload.setOnClickListener(v -> listener.onDownloadClick(scp));
     }
 
     @Override
@@ -92,10 +95,12 @@ public class SCPAdapter extends RecyclerView.Adapter<SCPAdapter.ViewHolder> impl
 
     static class ViewHolder extends RecyclerView.ViewHolder {
         TextView numberText, titleText;
+        ImageButton btnDownload;
         ViewHolder(View itemView) {
             super(itemView);
             numberText = itemView.findViewById(R.id.scpNumber);
             titleText = itemView.findViewById(R.id.scpTitle);
+            btnDownload = itemView.findViewById(R.id.btnDownloadItem);
         }
     }
 }

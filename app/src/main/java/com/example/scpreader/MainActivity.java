@@ -68,7 +68,7 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
                 SCPObject newScp = new SCPObject(number, "Добавленный объект");
                 dbHelper.addSCP(newScp);
                 refreshList();
-                openDetail(newScp);
+                openDetail(newScp, false);
             }
         });
     }
@@ -185,12 +185,18 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
 
     @Override
     public void onItemClick(SCPObject scp) {
-        openDetail(scp);
+        openDetail(scp, false);
     }
 
-    private void openDetail(SCPObject scp) {
+    @Override
+    public void onDownloadClick(SCPObject scp) {
+        openDetail(scp, true);
+    }
+
+    private void openDetail(SCPObject scp, boolean autoDownload) {
         Intent intent = new Intent(this, DetailActivity.class);
         intent.putExtra("scp", scp);
+        intent.putExtra("auto_download", autoDownload);
         startActivity(intent);
     }
 }
