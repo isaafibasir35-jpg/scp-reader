@@ -82,6 +82,8 @@ public class DetailActivity extends AppCompatActivity {
         settings.setDomStorageEnabled(true);
         settings.setLoadWithOverviewMode(true);
         settings.setUseWideViewPort(true);
+        settings.setAllowFileAccessFromFileURLs(true);
+        settings.setAllowUniversalAccessFromFileURLs(true);
         settings.setUserAgentString("Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36");
 
         // Настройки кэширования для офлайн-режима
@@ -116,8 +118,14 @@ public class DetailActivity extends AppCompatActivity {
     private void loadArticle() {
         File file = new File(getFilesDir(), scp.getNumber() + ".xml.webarchive");
         if (file.exists()) {
-            // file.getAbsolutePath() starts with '/', so file:// + /path = file:///path
-            webView.loadUrl("file://" + file.getAbsolutePath());
+            if (file.length() == 0) {
+                file.delete();
+                String number = scp.getNumber().toLowerCase().replace("scp-", "");
+                String url = "https://scpfoundation.net/scp-" + number;
+                webView.loadUrl(url);
+            } else {
+                webView.loadUrl("file://" + file.getAbsolutePath());
+            }
         } else {
             String number = scp.getNumber().toLowerCase().replace("scp-", "");
             String url = "https://scpfoundation.net/scp-" + number;
