@@ -4,6 +4,10 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import androidx.appcompat.app.AppCompatActivity;
@@ -144,13 +148,26 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
     }
 
     @Override
-    public boolean onCreateOptionsMenu(android.view.Menu menu) {
+    public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.main_menu, menu);
         return true;
     }
 
     @Override
-    public boolean onOptionsItemSelected(android.view.MenuItem item) {
+    public boolean onOptionsItemSelected(MenuItem item) {
+        int id = item.getItemId();
+        if (id == R.id.cat_popular) {
+            adapter.updateList(scpList);
+            return true;
+        } else if (id == R.id.cat_series_1) {
+            filterSeries(1, 999);
+            return true;
+        } else if (id == R.id.cat_series_2) {
+            filterSeries(1000, 1999);
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
         int id = item.getItemId();
         if (id == R.id.cat_popular) {
             adapter.updateList(scpList);

@@ -8,6 +8,8 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.ProgressBar;
 import androidx.appcompat.app.AppCompatActivity;
+import android.content.Intent;
+import java.io.Serializable;
 
 public class DetailActivity extends AppCompatActivity {
     private WebView webView;
@@ -22,7 +24,11 @@ public class DetailActivity extends AppCompatActivity {
         webView = findViewById(R.id.webview);
         progressBar = findViewById(R.id.progressBar);
 
-        scp = (SCPObject) getIntent().getSerializableExtra("scp");
+        Intent intent = getIntent();
+        if (intent != null && intent.hasExtra("scp")) {
+            scp = (SCPObject) intent.getSerializableExtra("scp");
+        }
+        
         if (scp != null) {
             setTitle(scp.getNumber());
             setupWebView();
@@ -41,16 +47,6 @@ public class DetailActivity extends AppCompatActivity {
         // Настройки кэширования для офлайн-режима
         settings.setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
         settings.setAllowFileAccess(true);
-        settings.setDomStorageEnabled(true);
-        
-        // AppCache (устарело, но для старых API полезно)
-        settings.setDatabaseEnabled(true);
-        String cachePath = getApplicationContext().getCacheDir().getAbsolutePath();
-        settings.setDatabasePath(cachePath);
-        
-        // Включаем AppCache по просьбе пользователя
-        settings.setAppCacheEnabled(true);
-        settings.setAppCachePath(cachePath);
         
         // Современный способ кэширования через DOM Storage и стандартный кэш браузера
         // LOAD_CACHE_ELSE_NETWORK заставит WebView брать данные из кэша, если сети нет.
