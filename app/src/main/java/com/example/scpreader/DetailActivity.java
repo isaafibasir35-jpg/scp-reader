@@ -106,7 +106,7 @@ public class DetailActivity extends AppCompatActivity {
 
                     runOnUiThread(() -> Toast.makeText(DetailActivity.this, "Статья сохранена", Toast.LENGTH_SHORT).show());
                 } else {
-                    runOnUiThread(() -> Toast.makeText(DetailActivity.this, "Ошибка при скачивании: " + connection.getResponseCode(), Toast.LENGTH_SHORT).show());
+                    runOnUiThread(() -> Toast.makeText(DetailActivity.this, "Ошибка при скачивании", Toast.LENGTH_SHORT).show());
                 }
                 connection.disconnect();
             } catch (Exception e) {
