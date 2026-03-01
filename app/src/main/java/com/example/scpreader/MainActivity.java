@@ -126,56 +126,17 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
     }
 
     private void parseScpList() {
-        String js = "(function() {" +
-                "  var results = [];" +
-                "  var items = document.querySelectorAll('#page-content li');" +
-                "  for (var i = 0; i < items.length; i++) {" +
-                "    var a = items[i].querySelector('a[href^=\"/scp-\"]');" +
-                "    if (a) {" +
-                "      var number = a.innerText.trim();" +
-                "      var fullText = items[i].innerText.trim();" +
-                "      var title = fullText.substring(fullText.indexOf(number) + number.length).replace(/^[\\s\\-—:]+/, \"\").trim();" +
-                "      results.push(number + \":::\" + title);" +
-                "    }" +
-                "  }" +
-                "  return results.join(\";;;\");" +
-                "})()";
+        String js = "(function() { return 'Заголовок: ' + document.title + ' | Текст: ' + document.body.innerText.substring(0, 150); })();";
 
         hiddenWebView.evaluateJavascript(js, new ValueCallback<String>() {
             @Override
-            public void onReceiveValue(String value) {
-                if (value == null || value.isEmpty() || value.equals("\"\"") || value.equals("null")) {
-                    return;
-                }
-                
-                // WebView возвращает строку в кавычках с экранированием
-                if (value.startsWith("\"") && value.endsWith("\"")) {
-                    value = value.substring(1, value.length() - 1);
-                }
-                // Исправление экранированных символов
-                value = value.replace("\\\\", "\\").replace("\\\"", "\"");
-
-                String[] items = value.split(";;;");
-                List<SCPObject> newList = new ArrayList<>();
-                for (String item : items) {
-                    String[] parts = item.split(":::");
-                    if (parts.length >= 2) {
-                        newList.add(new SCPObject(parts[0], parts[1]));
-                    } else if (parts.length == 1) {
-                        newList.add(new SCPObject(parts[0], ""));
+            public void onReceiveValue(final String value) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(MainActivity.this, "Debug: " + value, Toast.LENGTH_LONG).show();
                     }
-                }
-                
-                if (!newList.isEmpty()) {
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            Toast.makeText(MainActivity.this, "Найдено объектов: " + newList.size(), Toast.LENGTH_SHORT).show();
-                            adapter.updateList(newList);
-                            recyclerView.scrollToPosition(0);
-                        }
-                    });
-                }
+                });
             }
         });
     }
