@@ -11,9 +11,13 @@ import android.text.TextWatcher;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.webkit.ValueCallback;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.Spinner;
+import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -24,9 +28,32 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
     private RecyclerView recyclerView;
     private SCPAdapter adapter;
     private List<SCPObject> scpList;
+    private List<SCPObject> popularScpList;
     private EditText searchField;
     private Spinner categorySpinner;
     private DatabaseHelper dbHelper;
+    private WebView hiddenWebView;
+
+    private final String[] categories = {
+            "Популярные", "Серия I", "Серия II", "Серия III", "Серия IV", "Серия V",
+            "Серия VI", "Серия VII", "Серия VIII", "Серия IX", "Серия X",
+            "Филиал RU"
+    };
+
+    private final String[] categoryUrls = {
+            null,
+            "https://scpfoundation.net/scp-series",
+            "https://scpfoundation.net/scp-series-2",
+            "https://scpfoundation.net/scp-series-3",
+            "https://scpfoundation.net/scp-series-4",
+            "https://scpfoundation.net/scp-series-5",
+            "https://scpfoundation.net/scp-series-6",
+            "https://scpfoundation.net/scp-series-7",
+            "https://scpfoundation.net/scp-series-8",
+            "https://scpfoundation.net/scp-series-9",
+            "https://scpfoundation.net/scp-series-10",
+            "https://scpfoundation.net/scp-list-ru"
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,13 +68,17 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
         searchField = findViewById(R.id.searchField);
         categorySpinner = findViewById(R.id.categorySpinner);
 
+        // Инициализация скрытого WebView для парсинга
+        hiddenWebView = new WebView(this);
+        hiddenWebView.getSettings().setJavaScriptEnabled(true);
+        hiddenWebView.setWebViewClient(new WebViewClient() {
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                parseScpList();
+            }
+        });
+
         // Настройка Spinner (категории)
-        String[] categories = {
-                "Популярные", "Серия I", "Серия II", "Серия III", "Серия IV", "Серия V",
-                "Серия VI", "Серия VII", "Серия VIII", "Серия IX", "Серия X",
-                "Шуточные (J)", "Обоснованные (EX)", "Филиал RU", "Филиал FR",
-                "Филиал JP", "Филиал ES", "Филиал UA"
-        };
         ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<>(this,
                 android.R.layout.simple_spinner_item, categories);
         spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -57,16 +88,13 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
         categorySpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(android.widget.AdapterView<?> parent, android.view.View view, int position, long id) {
-                String selected = categories[position];
-                if (selected.equals("Популярные")) {
-                    adapter.updateList(scpList);
-                } else if (selected.startsWith("Серия")) {
-                    int seriesNum = position; // Позиция совпадает с номером серии (Серия I = 1, и т.д.)
-                    filterSeries((seriesNum - 1) * 1000, seriesNum * 1000 - 1);
+                String url = categoryUrls[position];
+                if (url == null) {
+                    // "Популярные"
+                    adapter.updateList(popularScpList);
                 } else {
-                    // Другие категории пока без фильтрации или со специальной логикой
-                    // Временно выводим все (или можно расширить логику)
-                    adapter.updateList(scpList);
+                    Toast.makeText(MainActivity.this, "Загрузка списка...", Toast.LENGTH_SHORT).show();
+                    hiddenWebView.loadUrl(url);
                 }
             }
 
@@ -76,7 +104,7 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
         // Список 50 популярных SCP
         initScpList();
 
-        adapter = new SCPAdapter(scpList, this);
+        adapter = new SCPAdapter(new ArrayList<>(popularScpList), this);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         recyclerView.setAdapter(adapter);
 
@@ -90,15 +118,59 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
         });
     }
 
-    private void refreshList() {
-        initScpList();
-        adapter.updateList(scpList);
+    private void parseScpList() {
+        String js = "(function() {" +
+                "  var results = [];" +
+                "  var items = document.querySelectorAll('#page-content li');" +
+                "  for (var i = 0; i < items.length; i++) {" +
+                "    var a = items[i].querySelector('a[href^=\"/scp-\"]');" +
+                "    if (a) {" +
+                "      var number = a.innerText.trim();" +
+                "      var fullText = items[i].innerText.trim();" +
+                "      var title = fullText.substring(fullText.indexOf(number) + number.length).replace(/^[\\s\\-—:]+/, \"\").trim();" +
+                "      results.push(number + \":::\" + title);" +
+                "    }" +
+                "  }" +
+                "  return results.join(\";;;\");" +
+                "})()";
+
+        hiddenWebView.evaluateJavascript(js, new ValueCallback<String>() {
+            @Override
+            public void onReceiveValue(String value) {
+                if (value == null || value.isEmpty() || value.equals("\"\"") || value.equals("null")) {
+                    return;
+                }
+                
+                // WebView возвращает строку в кавычках с экранированием
+                if (value.startsWith("\"") && value.endsWith("\"")) {
+                    value = value.substring(1, value.length() - 1);
+                }
+                // Исправление экранированных символов
+                value = value.replace("\\\\", "\\").replace("\\\"", "\"");
+
+                String[] items = value.split(";;;");
+                List<SCPObject> newList = new ArrayList<>();
+                for (String item : items) {
+                    String[] parts = item.split(":::");
+                    if (parts.length >= 2) {
+                        newList.add(new SCPObject(parts[0], parts[1]));
+                    } else if (parts.length == 1) {
+                        newList.add(new SCPObject(parts[0], ""));
+                    }
+                }
+                
+                if (!newList.isEmpty()) {
+                    adapter.updateList(newList);
+                    recyclerView.scrollToPosition(0);
+                }
+            }
+        });
     }
 
     private void initScpList() {
-        scpList = new ArrayList<>();
+        popularScpList = new ArrayList<>();
         // Сначала загружаем из БД (те, что добавил пользователь)
-        scpList.addAll(dbHelper.getAllSCPs());
+        popularScpList.addAll(dbHelper.getAllSCPs());
         
         // Список 50 популярных объектов
         List<SCPObject> defaultList = new ArrayList<>();
@@ -156,14 +228,14 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
         // Добавляем только те, которых еще нет в списке (уникальность по номеру)
         for (SCPObject defaultScp : defaultList) {
             boolean exists = false;
-            for (SCPObject existing : scpList) {
+            for (SCPObject existing : popularScpList) {
                 if (existing.getNumber().equalsIgnoreCase(defaultScp.getNumber())) {
                     exists = true;
                     break;
                 }
             }
             if (!exists) {
-                scpList.add(defaultScp);
+                popularScpList.add(defaultScp);
             }
         }
     }
@@ -176,37 +248,7 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        int id = item.getItemId();
-        // Меню категорий теперь в Spinner, здесь можно оставить только общие действия
         return super.onOptionsItemSelected(item);
-    }
-
-    private void filterSeries(int min, int max) {
-        List<SCPObject> filtered = new ArrayList<>();
-        // Фильтруем объекты по номеру из scpList (если они там есть)
-        for (SCPObject scp : scpList) {
-            try {
-                String numStr = scp.getNumber().replaceAll("[^0-9]", "");
-                if (!numStr.isEmpty()) {
-                    int num = Integer.parseInt(numStr);
-                    if (num >= min && num <= max) {
-                        filtered.add(scp);
-                    }
-                }
-            } catch (NumberFormatException ignored) {}
-        }
-        
-        // Если ничего не нашли в текущем списке (например, для новых серий), 
-        // добавляем заполнители для примера (как в старой логике, но более чисто)
-        if (filtered.isEmpty()) {
-            for (int i = min; i < min + 5; i++) {
-                String num = String.format("SCP-%03d", i);
-                filtered.add(new SCPObject(num, "Объект серии " + num));
-            }
-        }
-        
-        adapter.updateList(filtered);
-        recyclerView.announceForAccessibility("Отображается список объектов с " + min + " по " + max);
     }
 
     @Override
