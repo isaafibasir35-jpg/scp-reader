@@ -11,9 +11,9 @@ import android.text.TextWatcher;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
-import android.view.View;
-import android.widget.Button;
+import android.widget.ArrayAdapter;
 import android.widget.EditText;
+import android.widget.Spinner;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -24,8 +24,8 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
     private RecyclerView recyclerView;
     private SCPAdapter adapter;
     private List<SCPObject> scpList;
-    private EditText searchField, manualInput;
-    private Button addButton;
+    private EditText searchField;
+    private Spinner categorySpinner;
     private DatabaseHelper dbHelper;
 
     @Override
@@ -39,8 +39,19 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
         // Инициализация UI
         recyclerView = findViewById(R.id.scpList);
         searchField = findViewById(R.id.searchField);
-        manualInput = findViewById(R.id.manualInput);
-        addButton = findViewById(R.id.addButton);
+        categorySpinner = findViewById(R.id.categorySpinner);
+
+        // Настройка Spinner (категории)
+        String[] categories = {
+                "Серия I", "Серия II", "Серия III", "Серия IV", "Серия V",
+                "Серия VI", "Серия VII", "Серия VIII", "Серия IX", "Серия X",
+                "Шуточные (J)", "Обоснованные (EX)", "Филиал RU", "Филиал FR",
+                "Филиал JP", "Филиал ES", "Филиал UA"
+        };
+        ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item, categories);
+        spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        categorySpinner.setAdapter(spinnerAdapter);
 
         // Список 50 популярных SCP
         initScpList();
@@ -56,20 +67,6 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
                 adapter.getFilter().filter(s);
             }
             @Override public void afterTextChanged(Editable s) {}
-        });
-
-        // Ручной ввод
-        addButton.setOnClickListener(v -> {
-            String number = manualInput.getText().toString().trim();
-            if (!number.isEmpty()) {
-                if (!number.toLowerCase().startsWith("scp-")) {
-                    number = "SCP-" + number;
-                }
-                SCPObject newScp = new SCPObject(number, "Добавленный объект");
-                dbHelper.addSCP(newScp);
-                refreshList();
-                openDetail(newScp, false);
-            }
         });
     }
 

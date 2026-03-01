@@ -14,29 +14,13 @@
         android:inputType="text"
         android:importantForAccessibility="yes" />
 
-    <!-- Ручной ввод -->
-    <LinearLayout
+    <!-- Категории -->
+    <Spinner
+        android:id="@+id/categorySpinner"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:paddingTop="8dp">
-
-        <EditText
-            android:id="@+id/manualInput"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:hint="@string/manual_input_hint"
-            android:inputType="number"
-            android:importantForAccessibility="yes" />
-
-        <Button
-            android:id="@+id/addButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Добавить/Открыть"
-            android:contentDescription="@string/add_button_content_description" />
-    </LinearLayout>
+        android:layout_marginTop="8dp"
+        android:importantForAccessibility="yes" />
 
     <!-- Список -->
     <androidx.recyclerview.widget.RecyclerView
