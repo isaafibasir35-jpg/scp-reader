@@ -126,7 +126,7 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
     }
 
     private void parseScpList() {
-        String js = "(function() { return 'Заголовок: ' + document.title + ' | Текст: ' + document.body.innerText.substring(0, 150); })();";
+        String js = "(function() { var res=[]; var lis=document.querySelectorAll('#page-content li'); for(var i=0;i<lis.length;i++){ var a=lis[i].querySelector('a'); if(a && a.getAttribute('href') && a.getAttribute('href').indexOf('/scp-') == -1){ var num=a.innerText.trim(); var title=lis[i].innerText.replace(num,'').replace(/^\\s*-\\s*/, '').trim(); if(num) res.push(num+'|||'+title); } } return res.join('###'); })();";
 
         hiddenWebView.evaluateJavascript(js, new ValueCallback<String>() {
             @Override
@@ -134,7 +134,46 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        Toast.makeText(MainActivity.this, "Debug: " + value, Toast.LENGTH_LONG).show();
+                        if (value == null || value.equals("null") || value.isEmpty()) {
+                            Toast.makeText(MainActivity.this, "Ничего не найдено", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+
+                        // 2) Распарси полученную строку (сначала убери кавычки)
+                        String data = value;
+                        if (data.startsWith("\"") && data.endsWith("\"")) {
+                            data = data.substring(1, data.length() - 1);
+                        }
+                        // Убираем экранирование, которое может добавить evaluateJavascript
+                        data = data.replace("\\\\", "\\").replace("\\\"", "\"");
+
+                        // split("###")
+                        String[] items = data.split("###");
+
+                        // 3) ОЧИСТИ старый список объектов
+                        if (scpList == null) {
+                            scpList = new ArrayList<>();
+                        }
+                        scpList.clear();
+
+                        // 4) В цикле добавь новые объекты в список
+                        for (String item : items) {
+                            // split("\\|\\|\\|")
+                            String[] parts = item.split("\\|\\|\\|");
+                            if (parts.length >= 2) {
+                                String num = parts[0].trim();
+                                String title = parts[1].trim();
+                                if (!num.isEmpty()) {
+                                    scpList.add(new SCPObject(num, title));
+                                }
+                            }
+                        }
+
+                        // 5) ОБНОВИ адаптер
+                        adapter.updateList(scpList);
+
+                        // 6) Оставь Toast с количеством найденных объектов
+                        Toast.makeText(MainActivity.this, "Найдено объектов: " + scpList.size(), Toast.LENGTH_SHORT).show();
                     }
                 });
             }
