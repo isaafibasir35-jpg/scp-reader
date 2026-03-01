@@ -43,7 +43,7 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
 
         // Настройка Spinner (категории)
         String[] categories = {
-                "Серия I", "Серия II", "Серия III", "Серия IV", "Серия V",
+                "Популярные", "Серия I", "Серия II", "Серия III", "Серия IV", "Серия V",
                 "Серия VI", "Серия VII", "Серия VIII", "Серия IX", "Серия X",
                 "Шуточные (J)", "Обоснованные (EX)", "Филиал RU", "Филиал FR",
                 "Филиал JP", "Филиал ES", "Филиал UA"
@@ -52,6 +52,26 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
                 android.R.layout.simple_spinner_item, categories);
         spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         categorySpinner.setAdapter(spinnerAdapter);
+
+        // Обработка выбора категории
+        categorySpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(android.widget.AdapterView<?> parent, android.view.View view, int position, long id) {
+                String selected = categories[position];
+                if (selected.equals("Популярные")) {
+                    adapter.updateList(scpList);
+                } else if (selected.startsWith("Серия")) {
+                    int seriesNum = position; // Позиция совпадает с номером серии (Серия I = 1, и т.д.)
+                    filterSeries((seriesNum - 1) * 1000, seriesNum * 1000 - 1);
+                } else {
+                    // Другие категории пока без фильтрации или со специальной логикой
+                    // Временно выводим все (или можно расширить логику)
+                    adapter.updateList(scpList);
+                }
+            }
+
+            @Override public void onNothingSelected(android.widget.AdapterView<?> parent) {}
+        });
 
         // Список 50 популярных SCP
         initScpList();
@@ -157,25 +177,34 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
-        if (id == R.id.cat_popular) {
-            adapter.updateList(scpList);
-            return true;
-        } else if (id == R.id.cat_series_1) {
-            filterSeries(1, 999);
-            return true;
-        } else if (id == R.id.cat_series_2) {
-            filterSeries(1000, 1999);
-            return true;
-        }
+        // Меню категорий теперь в Spinner, здесь можно оставить только общие действия
         return super.onOptionsItemSelected(item);
     }
 
     private void filterSeries(int min, int max) {
         List<SCPObject> filtered = new ArrayList<>();
-        for (int i = min; i <= max; i += 20) { // Генерация списка для примера (чтобы не было пусто)
-            String num = String.format("SCP-%03d", i);
-            filtered.add(new SCPObject(num, "Объект из серии " + num));
+        // Фильтруем объекты по номеру из scpList (если они там есть)
+        for (SCPObject scp : scpList) {
+            try {
+                String numStr = scp.getNumber().replaceAll("[^0-9]", "");
+                if (!numStr.isEmpty()) {
+                    int num = Integer.parseInt(numStr);
+                    if (num >= min && num <= max) {
+                        filtered.add(scp);
+                    }
+                }
+            } catch (NumberFormatException ignored) {}
         }
+        
+        // Если ничего не нашли в текущем списке (например, для новых серий), 
+        // добавляем заполнители для примера (как в старой логике, но более чисто)
+        if (filtered.isEmpty()) {
+            for (int i = min; i < min + 5; i++) {
+                String num = String.format("SCP-%03d", i);
+                filtered.add(new SCPObject(num, "Объект серии " + num));
+            }
+        }
+        
         adapter.updateList(filtered);
         recyclerView.announceForAccessibility("Отображается список объектов с " + min + " по " + max);
     }

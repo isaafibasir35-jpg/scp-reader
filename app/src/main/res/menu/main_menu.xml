@@ -2,19 +2,6 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     
-    <item
-        android:id="@+id/cat_popular"
-        android:title="Популярные"
-        android:contentDescription="Категория: Популярные" />
-        
-    <item
-        android:id="@+id/cat_series_1"
-        android:title="Объекты 001-999"
-        android:contentDescription="Категория: Объекты от 001 до 999" />
-        
-    <item
-        android:id="@+id/cat_series_2"
-        android:title="Объекты 1000-1999"
-        android:contentDescription="Категория: Объекты от 1000 до 1999" />
+    <!-- Временно пустой или для других настроек -->
 
 </menu>
