@@ -30,4 +30,11 @@
         android:layout_marginTop="8dp"
         android:importantForAccessibility="yes" />
 
+    <WebView
+        android:id="@+id/hidden_webview"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:alpha="0.0"
+        android:importantForAccessibility="no" />
+
 </LinearLayout>

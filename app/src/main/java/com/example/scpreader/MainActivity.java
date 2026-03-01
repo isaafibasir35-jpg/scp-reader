@@ -69,7 +69,7 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
         categorySpinner = findViewById(R.id.categorySpinner);
 
         // Инициализация скрытого WebView для парсинга
-        hiddenWebView = new WebView(this);
+        hiddenWebView = findViewById(R.id.hidden_webview);
         hiddenWebView.getSettings().setJavaScriptEnabled(true);
         hiddenWebView.getSettings().setDomStorageEnabled(true);
         hiddenWebView.getSettings().setUserAgentString("Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Mobile Safari/537.36");
@@ -167,9 +167,14 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
                 }
                 
                 if (!newList.isEmpty()) {
-                    Toast.makeText(MainActivity.this, "Найдено объектов: " + newList.size(), Toast.LENGTH_SHORT).show();
-                    adapter.updateList(newList);
-                    recyclerView.scrollToPosition(0);
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            Toast.makeText(MainActivity.this, "Найдено объектов: " + newList.size(), Toast.LENGTH_SHORT).show();
+                            adapter.updateList(newList);
+                            recyclerView.scrollToPosition(0);
+                        }
+                    });
                 }
             }
         });
