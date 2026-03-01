@@ -47,7 +47,10 @@ public class DetailActivity extends AppCompatActivity {
         if (scp != null) {
             setTitle(scp.getNumber());
             setupWebView();
-            loadArticle();
+            
+            if (savedInstanceState == null) {
+                loadArticle();
+            }
 
             btnDownload.setOnClickListener(v -> {
                 saveOffline();
@@ -129,24 +132,14 @@ public class DetailActivity extends AppCompatActivity {
             @SuppressWarnings("deprecation")
             @Override
             public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
-                Toast.makeText(DetailActivity.this, "Ошибка сети", Toast.LENGTH_SHORT).show();
-                progressBar.setVisibility(View.GONE);
             }
 
             @Override
             public void onReceivedError(WebView view, android.webkit.WebResourceRequest request, android.webkit.WebResourceError error) {
-                if (request.isForMainFrame()) {
-                    Toast.makeText(DetailActivity.this, "Ошибка сети", Toast.LENGTH_SHORT).show();
-                    progressBar.setVisibility(View.GONE);
-                }
             }
 
             @Override
             public void onReceivedHttpError(WebView view, android.webkit.WebResourceRequest request, android.webkit.WebResourceResponse errorResponse) {
-                if (request.isForMainFrame()) {
-                    Toast.makeText(DetailActivity.this, "Ошибка сети", Toast.LENGTH_SHORT).show();
-                    progressBar.setVisibility(View.GONE);
-                }
             }
         });
     }
