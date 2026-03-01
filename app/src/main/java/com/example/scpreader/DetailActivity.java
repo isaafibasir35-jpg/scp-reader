@@ -113,7 +113,13 @@ public class DetailActivity extends AppCompatActivity {
         // Настройки кэширования для офлайн-режима
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
         
-        webView.setWebViewClient(new android.webkit.WebViewClient());
+        webView.setWebViewClient(new android.webkit.WebViewClient() {
+            @Override
+            public void onPageFinished(android.webkit.WebView view, String url) {
+                super.onPageFinished(view, url);
+                view.evaluateJavascript("javascript:(function() { var e = ['header', 'top-bar', 'side-bar', 'footer', 'page-options-bottom']; for (var i=0; i<e.length; i++) { var el = document.getElementById(e[i]); if(el) el.style.display='none'; } var mc = document.getElementById('main-content'); if(mc) { mc.style.marginLeft='0'; mc.style.padding='10px'; } })()", null);
+            }
+        });
         webView.setWebChromeClient(new android.webkit.WebChromeClient());
     }
 
