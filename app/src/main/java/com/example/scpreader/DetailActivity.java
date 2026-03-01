@@ -67,6 +67,8 @@ public class DetailActivity extends AppCompatActivity {
                         Toast.makeText(this, "Файл удален", Toast.LENGTH_SHORT).show();
                         String number = scp.getNumber().toLowerCase().replace("scp-", "");
                         String url = "https://scpfoundation.net/scp-" + number;
+                        webView.getSettings().setJavaScriptEnabled(true);
+                        webView.getSettings().setBlockNetworkLoads(false);
                         webView.loadUrl(url);
                     }
                 }
@@ -150,6 +152,8 @@ public class DetailActivity extends AppCompatActivity {
         String url = "https://scpfoundation.net/scp-" + number;
 
         if (file.exists()) {
+            webView.getSettings().setJavaScriptEnabled(false);
+            webView.getSettings().setBlockNetworkLoads(true);
             try {
                 StringBuilder content = new StringBuilder();
                 BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file)));
@@ -161,9 +165,13 @@ public class DetailActivity extends AppCompatActivity {
                 webView.loadDataWithBaseURL("https://scpfoundation.net/", content.toString(), "text/html", "UTF-8", null);
             } catch (Exception e) {
                 e.printStackTrace();
+                webView.getSettings().setJavaScriptEnabled(true);
+                webView.getSettings().setBlockNetworkLoads(false);
                 webView.loadUrl(url);
             }
         } else {
+            webView.getSettings().setJavaScriptEnabled(true);
+            webView.getSettings().setBlockNetworkLoads(false);
             webView.loadUrl(url);
         }
     }
