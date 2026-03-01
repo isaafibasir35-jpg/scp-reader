@@ -136,6 +136,9 @@ public class DetailActivity extends AppCompatActivity {
 
     private void loadArticle() {
         File file = new File(getFilesDir(), scp.getNumber() + ".html");
+        String number = scp.getNumber().toLowerCase().replace("scp-", "");
+        String url = "https://scpfoundation.net/scp-" + number;
+
         if (file.exists()) {
             try {
                 StringBuilder content = new StringBuilder();
@@ -148,15 +151,19 @@ public class DetailActivity extends AppCompatActivity {
                 webView.loadDataWithBaseURL("https://scpfoundation.net/", content.toString(), "text/html", "UTF-8", null);
             } catch (Exception e) {
                 e.printStackTrace();
-                String number = scp.getNumber().toLowerCase().replace("scp-", "");
-                String url = "https://scpfoundation.net/scp-" + number;
                 webView.loadUrl(url);
             }
         } else {
-            String number = scp.getNumber().toLowerCase().replace("scp-", "");
-            String url = "https://scpfoundation.net/scp-" + number;
             webView.loadUrl(url);
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (webView != null) {
+            webView.destroy();
+        }
+        super.onDestroy();
     }
 
     @Override
