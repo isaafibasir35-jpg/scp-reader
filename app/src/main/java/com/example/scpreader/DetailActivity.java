@@ -113,37 +113,8 @@ public class DetailActivity extends AppCompatActivity {
         // Настройки кэширования для офлайн-режима
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
         
-        webView.setWebViewClient(new WebViewClient() {
-            @Override
-            public void onPageStarted(WebView view, String url, Bitmap favicon) {
-                progressBar.setVisibility(View.VISIBLE);
-            }
-
-            @Override
-            public void onPageFinished(WebView view, String url) {
-                progressBar.setVisibility(View.GONE);
-                // Инъекция JS для скрытия визуального мусора
-                view.evaluateJavascript("try { document.getElementById('header').style.display='none'; document.getElementById('top-bar').style.display='none'; document.getElementById('side-bar').style.display='none'; document.getElementById('footer').style.display='none'; document.getElementById('page-options-container').style.display='none'; } catch(e) {}", null);
-                
-                if (getIntent().getBooleanExtra("auto_download", false)) {
-                    getIntent().removeExtra("auto_download"); // Чтобы не качать повторно при пересоздании
-                    saveOffline();
-                }
-            }
-
-            @SuppressWarnings("deprecation")
-            @Override
-            public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
-            }
-
-            @Override
-            public void onReceivedError(WebView view, android.webkit.WebResourceRequest request, android.webkit.WebResourceError error) {
-            }
-
-            @Override
-            public void onReceivedHttpError(WebView view, android.webkit.WebResourceRequest request, android.webkit.WebResourceResponse errorResponse) {
-            }
-        });
+        webView.setWebViewClient(new android.webkit.WebViewClient());
+        webView.setWebChromeClient(new android.webkit.WebChromeClient());
     }
 
     private void loadArticle() {
