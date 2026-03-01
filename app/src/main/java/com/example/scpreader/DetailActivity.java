@@ -21,8 +21,6 @@ import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.InputStreamReader;
 import java.io.Serializable;
-import java.net.HttpURLConnection;
-import java.net.URL;
 
 public class DetailActivity extends AppCompatActivity {
     private WebView webView;
@@ -79,47 +77,7 @@ public class DetailActivity extends AppCompatActivity {
     }
 
     private void saveOffline() {
-        final String userAgent = webView.getSettings().getUserAgentString();
-        final String cookies = android.webkit.CookieManager.getInstance().getCookie("https://scpfoundation.net/");
-        new Thread(() -> {
-            try {
-                String number = scp.getNumber().toLowerCase().replace("scp-", "");
-                String urlString = "https://scpfoundation.net/scp-" + number;
-                URL url = new URL(urlString);
-                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                connection.setRequestMethod("GET");
-                connection.setConnectTimeout(5000);
-                connection.setReadTimeout(5000);
-                connection.setRequestProperty("User-Agent", userAgent);
-                if (cookies != null) {
-                    connection.setRequestProperty("Cookie", cookies);
-                }
-                connection.connect();
-
-                if (connection.getResponseCode() == HttpURLConnection.HTTP_OK) {
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-                    StringBuilder stringBuilder = new StringBuilder();
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        stringBuilder.append(line).append("\n");
-                    }
-                    reader.close();
-
-                    File file = new File(getFilesDir(), scp.getNumber() + ".html");
-                    FileWriter writer = new FileWriter(file);
-                    writer.write(stringBuilder.toString());
-                    writer.close();
-
-                    runOnUiThread(() -> Toast.makeText(DetailActivity.this, "Статья сохранена", Toast.LENGTH_SHORT).show());
-                } else {
-                    final int code = connection.getResponseCode();
-                    runOnUiThread(() -> Toast.makeText(DetailActivity.this, "Ошибка при скачивании, код: " + code, Toast.LENGTH_SHORT).show());
-                }
-                connection.disconnect();
-            } catch (Exception e) {
-                runOnUiThread(() -> Toast.makeText(DetailActivity.this, "Ошибка: " + e.toString(), Toast.LENGTH_SHORT).show());
-            }
-        }).start();
+        webView.evaluateJavascript("javascript:window.HTMLOUT.save('<html>'+document.getElementsByTagName('html')[0].innerHTML+'</html>');", null);
     }
 
     private void setupWebView() {
@@ -133,6 +91,19 @@ public class DetailActivity extends AppCompatActivity {
         settings.setAllowFileAccessFromFileURLs(true);
         settings.setAllowUniversalAccessFromFileURLs(true);
         settings.setUserAgentString("Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36");
+
+        webView.addJavascriptInterface(new Object() {
+            @android.webkit.JavascriptInterface
+            public void save(String html) {
+                try {
+                    java.io.File f = new java.io.File(getFilesDir(), scp.getNumber() + ".html");
+                    java.io.FileOutputStream out = new java.io.FileOutputStream(f);
+                    out.write(html.getBytes("UTF-8"));
+                    out.close();
+                    runOnUiThread(() -> android.widget.Toast.makeText(DetailActivity.this, "Статья сохранена", android.widget.Toast.LENGTH_SHORT).show());
+                } catch(Exception e){}
+            }
+        }, "HTMLOUT");
 
         // Настройки кэширования для офлайн-режима
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
