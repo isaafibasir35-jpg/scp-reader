@@ -21,14 +21,23 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItemClickListener {
     private RecyclerView recyclerView;
     private SCPAdapter adapter;
     private List<SCPObject> scpList;
     private List<SCPObject> popularScpList;
+    private Map<String, List<SCPObject>> categoryData;
     private EditText searchField;
     private Spinner categorySpinner;
     private DatabaseHelper dbHelper;
@@ -63,6 +72,9 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
         // Инициализация БД
         dbHelper = new DatabaseHelper(this);
 
+        // Загрузка данных из JSON
+        loadJsonData();
+
         // Инициализация UI
         recyclerView = findViewById(R.id.scpList);
         searchField = findViewById(R.id.searchField);
@@ -95,13 +107,20 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
         categorySpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(android.widget.AdapterView<?> parent, android.view.View view, int position, long id) {
-                String url = categoryUrls[position];
-                if (url == null) {
-                    // "Популярные"
+                String categoryName = categories[position];
+                
+                if (categoryName.equals("Популярные")) {
                     adapter.updateList(popularScpList);
+                } else if (categoryData.containsKey(categoryName) && !categoryData.get(categoryName).isEmpty()) {
+                    // Берем данные из JSON если они есть
+                    adapter.updateList(categoryData.get(categoryName));
                 } else {
-                    Toast.makeText(MainActivity.this, "Загрузка списка...", Toast.LENGTH_SHORT).show();
-                    hiddenWebView.loadUrl(url);
+                    // Иначе грузим через WebView
+                    String url = categoryUrls[position];
+                    if (url != null) {
+                        Toast.makeText(MainActivity.this, "Загрузка списка из сети...", Toast.LENGTH_SHORT).show();
+                        hiddenWebView.loadUrl(url);
+                    }
                 }
             }
 
@@ -123,6 +142,36 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
             }
             @Override public void afterTextChanged(Editable s) {}
         });
+    }
+
+    private void loadJsonData() {
+        categoryData = new HashMap<>();
+        try {
+            InputStream is = getAssets().open("database.json");
+            int size = is.available();
+            byte[] buffer = new byte[size];
+            is.read(buffer);
+            is.close();
+            String json = new String(buffer, StandardCharsets.UTF_8);
+            JSONObject obj = new JSONObject(json);
+
+            for (String category : categories) {
+                if (obj.has(category)) {
+                    List<SCPObject> list = new ArrayList<>();
+                    JSONArray array = obj.getJSONArray(category);
+                    for (int i = 0; i < array.length(); i++) {
+                        String item = array.getString(i);
+                        String[] parts = item.split("\\|\\|\\|");
+                        if (parts.length >= 2) {
+                            list.add(new SCPObject(parts[0].trim(), parts[1].trim()));
+                        }
+                    }
+                    categoryData.put(category, list);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private void parseScpList() {
