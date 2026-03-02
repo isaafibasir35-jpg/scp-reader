@@ -126,7 +126,7 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
     }
 
     private void parseScpList() {
-        String js = "(function() { var res=[]; var content=document.getElementById('page-content'); if(!content) return ''; var links=content.querySelectorAll('a'); for(var i=0;i<links.length;i++){ var a=links[i]; var num=a.innerText.trim().toUpperCase(); if(/^SCP-\\d+/.test(num)){ var parent=a.parentNode; if(parent && parent.tagName==='LI'){ var title=parent.innerText.replace(a.innerText, '').replace(/^[\\s\\-\\—\\–\\:\\[\\]]+/, '').trim(); if(title) title='Объект ' + num; res.push(num+'|||'+title); } } } return res.join('###'); })();";
+        String js = "(function() { var res=[]; var seen={}; var lis=document.querySelectorAll('li'); for(var i=0;i<lis.length;i++){ var li=lis[i]; var a=li.querySelector('a'); if(a){ var href=a.getAttribute('href')||''; if(href.indexOf('/scp-')==-1){ var num=a.innerText.trim().toUpperCase(); if(num.match(/SCP-\\d+/i)){ var m=li.innerText.match(/SCP-\\d+(?:-[A-Z]+)?/i); if(m) num=m[0].toUpperCase(); } if(num && num.indexOf('SCP-')===0 && !seen[num]){ seen[num]=true; var title=li.innerText.replace(a.innerText, '').replace(/^[\\s\\-\\—\\–\\:\\[\\]]+/, '').trim(); if(title) title='Объект '+num; res.push(num+'|||'+title); } } } } return res.join('###'); })();";
 
         hiddenWebView.evaluateJavascript(js, new ValueCallback<String>() {
             @Override
