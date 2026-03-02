@@ -81,7 +81,7 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
                     public void run() {
                         parseScpList();
                     }
-                }, 3000);
+                }, 4000);
             }
         });
 
@@ -126,7 +126,7 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
     }
 
     private void parseScpList() {
-        String js = "(function() { var res=[]; var lis=document.querySelectorAll('#page-content li'); for(var i=0;i<lis.length;i++){ var a=lis[i].querySelector('a'); if(a && a.getAttribute('href') && a.getAttribute('href').indexOf('/scp-') == -1){ var num=a.innerText.trim(); var title=lis[i].innerText.replace(num,'').replace(/^\\s*-\\s*/, '').trim(); if(num) res.push(num+'|||'+title); } } return res.join('###'); })();";
+        String js = "(function() { var res=[]; var content=document.getElementById('page-content'); if(!content) return ''; var links=content.querySelectorAll('a'); for(var i=0;i<links.length;i++){ var a=links[i]; var num=a.innerText.trim().toUpperCase(); if(/^SCP-\\d+/.test(num)){ var parent=a.parentNode; if(parent && parent.tagName==='LI'){ var title=parent.innerText.replace(a.innerText, '').replace(/^[\\s\\-\\—\\–\\:\\[\\]]+/, '').trim(); if(title) title='Объект ' + num; res.push(num+'|||'+title); } } } return res.join('###'); })();";
 
         hiddenWebView.evaluateJavascript(js, new ValueCallback<String>() {
             @Override
