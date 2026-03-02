@@ -33,7 +33,7 @@ def clean_title(name, title):
     return clean
 
 def main():
-    base_url = "https://scpper.com/api/v2/find-pages"
+    base_url = "https://scpper.com/api/v2/pages"
     params = {
         "site": "ru",
         "kind": "scp",
