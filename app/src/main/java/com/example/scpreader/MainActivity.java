@@ -103,12 +103,21 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
         spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         categorySpinner.setAdapter(spinnerAdapter);
 
+        // Список 50 популярных SCP (нужен для инициализации адаптера)
+        initScpList();
+        adapter = new SCPAdapter(new ArrayList<>(popularScpList), this);
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        recyclerView.setAdapter(adapter);
+
         // Обработка выбора категории
         categorySpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(android.widget.AdapterView<?> parent, android.view.View view, int position, long id) {
                 String categoryName = categories[position];
                 
+                // Сохраняем выбранную позицию
+                getPreferences(MODE_PRIVATE).edit().putInt("last_category_position", position).apply();
+
                 if (categoryName.equals("Популярные")) {
                     adapter.updateList(popularScpList);
                 } else if (categoryData.containsKey(categoryName) && !categoryData.get(categoryName).isEmpty()) {
@@ -127,12 +136,11 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
             @Override public void onNothingSelected(android.widget.AdapterView<?> parent) {}
         });
 
-        // Список 50 популярных SCP
-        initScpList();
-
-        adapter = new SCPAdapter(new ArrayList<>(popularScpList), this);
-        recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        recyclerView.setAdapter(adapter);
+        // Восстановление сохраненной позиции
+        int savedPosition = getPreferences(MODE_PRIVATE).getInt("last_category_position", 0);
+        if (savedPosition > 0 && savedPosition < categories.length) {
+            categorySpinner.setSelection(savedPosition);
+        }
 
         // Логика поиска
         searchField.addTextChangedListener(new TextWatcher() {
