@@ -163,11 +163,14 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
         categoryData = new HashMap<>();
         try {
             InputStream is = getAssets().open("database.json");
-            int size = is.available();
-            byte[] buffer = new byte[size];
-            is.read(buffer);
+            java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(is, StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line);
+            }
             is.close();
-            String json = new String(buffer, StandardCharsets.UTF_8);
+            String json = sb.toString();
             JSONObject obj = new JSONObject(json);
 
             for (String category : categories) {
@@ -186,6 +189,7 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
             }
         } catch (Exception e) {
             e.printStackTrace();
+            android.util.Log.e("MainActivity", "Error loading JSON data", e);
         }
     }
 
