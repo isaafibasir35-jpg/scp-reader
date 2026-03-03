@@ -2,8 +2,10 @@ package com.example.scpreader;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.webkit.ValueCallback;
@@ -25,8 +27,11 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.navigation.NavigationView;
 import org.json.JSONArray;
 import org.json.JSONObject;
+
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -103,7 +108,7 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
         hiddenWebView.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageFinished(WebView view, String url) {
-                new android.os.Handler().postDelayed(() -> parseScpList(), 4000);
+                new Handler().postDelayed(() -> parseScpList(), 4000);
             }
         });
 
@@ -163,7 +168,7 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
         categoryData = new HashMap<>();
         try {
             InputStream is = getAssets().open("database.json");
-            java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(is, StandardCharsets.UTF_8));
+            BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
             StringBuilder sb = new StringBuilder();
             String line;
             while ((line = reader.readLine()) != null) {
@@ -189,7 +194,7 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
             }
         } catch (Exception e) {
             e.printStackTrace();
-            android.util.Log.e("MainActivity", "Error loading JSON data", e);
+            Log.e("MainActivity", "Error loading JSON data", e);
         }
     }
 

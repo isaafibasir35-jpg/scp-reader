@@ -7,6 +7,8 @@ import android.database.sqlite.SQLiteOpenHelper;
 import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.view.View;
+import android.webkit.JavascriptInterface;
+import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -18,6 +20,7 @@ import android.widget.Toast;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.InputStreamReader;
 import java.io.Serializable;
@@ -100,17 +103,17 @@ public class DetailActivity extends AppCompatActivity {
         settings.setUserAgentString("Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36");
 
         webView.addJavascriptInterface(new Object() {
-            @android.webkit.JavascriptInterface
+            @JavascriptInterface
             public void save(String html) {
                 try {
-                    java.io.File f = new java.io.File(getFilesDir(), scp.getNumber() + ".html");
-                    java.io.FileOutputStream out = new java.io.FileOutputStream(f);
+                    File f = new File(getFilesDir(), scp.getNumber() + ".html");
+                    FileOutputStream out = new FileOutputStream(f);
                     out.write(html.getBytes("UTF-8"));
                     out.close();
                     if (scp != null) {
                         dbHelper.addOrUpdateSCP(scp);
                     }
-                    runOnUiThread(() -> android.widget.Toast.makeText(DetailActivity.this, "Статья сохранена", android.widget.Toast.LENGTH_SHORT).show());
+                    runOnUiThread(() -> Toast.makeText(DetailActivity.this, "Статья сохранена", Toast.LENGTH_SHORT).show());
                 } catch(Exception e){}
             }
         }, "HTMLOUT");
@@ -118,14 +121,14 @@ public class DetailActivity extends AppCompatActivity {
         // Настройки кэширования для офлайн-режима
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
         
-        webView.setWebViewClient(new android.webkit.WebViewClient() {
+        webView.setWebViewClient(new WebViewClient() {
             @Override
-            public void onPageFinished(android.webkit.WebView view, String url) {
+            public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
                 view.evaluateJavascript("javascript:(function() { var e = ['header', 'top-bar', 'side-bar', 'footer', 'page-options-bottom']; for (var i=0; i<e.length; i++) { var el = document.getElementById(e[i]); if(el) el.style.display='none'; } var mc = document.getElementById('main-content'); if(mc) { mc.style.marginLeft='0'; mc.style.padding='10px'; } })()", null);
             }
         });
-        webView.setWebChromeClient(new android.webkit.WebChromeClient());
+        webView.setWebChromeClient(new WebChromeClient());
     }
 
     private void loadArticle() {
