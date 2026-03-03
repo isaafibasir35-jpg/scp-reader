@@ -28,12 +28,14 @@ public class DetailActivity extends AppCompatActivity {
     private Button btnDownload;
     private Button btnUpdate;
     private SCPObject scp;
+    private DatabaseHelper dbHelper;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_detail);
 
+        dbHelper = new DatabaseHelper(this);
         webView = findViewById(R.id.webview);
         progressBar = findViewById(R.id.progressBar);
         btnDownload = findViewById(R.id.btnDownload);
@@ -105,6 +107,9 @@ public class DetailActivity extends AppCompatActivity {
                     java.io.FileOutputStream out = new java.io.FileOutputStream(f);
                     out.write(html.getBytes("UTF-8"));
                     out.close();
+                    if (scp != null) {
+                        dbHelper.addOrUpdateSCP(scp);
+                    }
                     runOnUiThread(() -> android.widget.Toast.makeText(DetailActivity.this, "Статья сохранена", android.widget.Toast.LENGTH_SHORT).show());
                 } catch(Exception e){}
             }

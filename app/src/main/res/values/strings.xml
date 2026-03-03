@@ -8,4 +8,6 @@
     <string name="read_more_content_description">Открыть статью </string>
     <string name="loading_text">Загрузка статьи...</string>
     <string name="error_loading">Ошибка загрузки. Проверьте интернет.</string>
+    <string name="navigation_drawer_open">Открыть меню</string>
+    <string name="navigation_drawer_close">Закрыть меню</string>
 </resources>

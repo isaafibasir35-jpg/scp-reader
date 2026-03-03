@@ -20,6 +20,7 @@ public class SCPAdapter extends RecyclerView.Adapter<SCPAdapter.ViewHolder> impl
     public interface OnItemClickListener {
         void onItemClick(SCPObject scp);
         void onDownloadClick(SCPObject scp);
+        void onFavoriteClick(SCPObject scp);
     }
 
     public SCPAdapter(List<SCPObject> scpList, OnItemClickListener listener) {
@@ -41,11 +42,19 @@ public class SCPAdapter extends RecyclerView.Adapter<SCPAdapter.ViewHolder> impl
         holder.numberText.setText(scp.getNumber());
         holder.titleText.setText(scp.getTitle());
         
+        // Favorite icon
+        holder.btnFavorite.setImageResource(scp.isFavorite() ? android.R.drawable.btn_star_big_on : android.R.drawable.btn_star_big_off);
+        
         // Доступность: Описание для скринридера
         holder.itemView.setContentDescription("Объект " + scp.getNumber() + ": " + scp.getTitle() + ". Нажмите для чтения статьи.");
         
         holder.itemView.setOnClickListener(v -> listener.onItemClick(scp));
         holder.btnDownload.setOnClickListener(v -> listener.onDownloadClick(scp));
+        holder.btnFavorite.setOnClickListener(v -> {
+            scp.setFavorite(!scp.isFavorite());
+            holder.btnFavorite.setImageResource(scp.isFavorite() ? android.R.drawable.btn_star_big_on : android.R.drawable.btn_star_big_off);
+            listener.onFavoriteClick(scp);
+        });
     }
 
     @Override
@@ -95,12 +104,13 @@ public class SCPAdapter extends RecyclerView.Adapter<SCPAdapter.ViewHolder> impl
 
     static class ViewHolder extends RecyclerView.ViewHolder {
         TextView numberText, titleText;
-        ImageButton btnDownload;
+        ImageButton btnDownload, btnFavorite;
         ViewHolder(View itemView) {
             super(itemView);
             numberText = itemView.findViewById(R.id.scpNumber);
             titleText = itemView.findViewById(R.id.scpTitle);
             btnDownload = itemView.findViewById(R.id.btnDownloadItem);
+            btnFavorite = itemView.findViewById(R.id.btnFavorite);
         }
     }
 }

@@ -1,56 +1,59 @@
 package com.example.scpreader;
 
-import android.content.ContentValues;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
-import android.database.sqlite.SQLiteOpenHelper;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.view.Menu;
-import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.View;
 import android.webkit.ValueCallback;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.EditText;
-import android.widget.Spinner;
+import android.widget.GridLayout;
+import android.widget.LinearLayout;
 import android.widget.Toast;
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+import androidx.core.view.GravityCompat;
+import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-
+import com.google.android.material.navigation.NavigationView;
 import org.json.JSONArray;
 import org.json.JSONObject;
-
+import java.io.File;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
-public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItemClickListener {
+public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItemClickListener, NavigationView.OnNavigationItemSelectedListener {
+    private DrawerLayout drawerLayout;
+    private NavigationView navigationView;
     private RecyclerView recyclerView;
     private SCPAdapter adapter;
-    private List<SCPObject> scpList;
-    private List<SCPObject> popularScpList;
     private Map<String, List<SCPObject>> categoryData;
     private EditText searchField;
-    private Spinner categorySpinner;
     private DatabaseHelper dbHelper;
     private WebView hiddenWebView;
+    private LinearLayout listLayout;
+    private View categoriesLayout;
+    private Toolbar toolbar;
 
     private final String[] categories = {
-            "Популярные", "Серия I", "Серия II", "Серия III", "Серия IV", "Серия V",
+            "Серия I", "Серия II", "Серия III", "Серия IV", "Серия V",
             "Серия VI", "Серия VII", "Серия VIII", "Серия IX", "Серия X",
             "Филиал RU"
     };
 
     private final String[] categoryUrls = {
-            null,
             "https://scpfoundation.net/scp-series",
             "https://scpfoundation.net/scp-series-2",
             "https://scpfoundation.net/scp-series-3",
@@ -69,80 +72,41 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Инициализация БД
-        dbHelper = new DatabaseHelper(this);
+        toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
 
-        // Загрузка данных из JSON
+        dbHelper = new DatabaseHelper(this);
         loadJsonData();
 
-        // Инициализация UI
+        drawerLayout = findViewById(R.id.drawer_layout);
+        navigationView = findViewById(R.id.nav_view);
+        navigationView.setNavigationItemSelectedListener(this);
+
+        ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(this, drawerLayout, toolbar,
+                R.string.navigation_drawer_open, R.string.navigation_drawer_close);
+        drawerLayout.addDrawerListener(toggle);
+        toggle.syncState();
+
         recyclerView = findViewById(R.id.scpList);
         searchField = findViewById(R.id.searchField);
-        categorySpinner = findViewById(R.id.categorySpinner);
+        listLayout = findViewById(R.id.list_layout);
+        categoriesLayout = findViewById(R.id.categories_layout);
 
-        // Инициализация скрытого WebView для парсинга
-        hiddenWebView = findViewById(R.id.hidden_webview);
-        hiddenWebView.getSettings().setJavaScriptEnabled(true);
-        hiddenWebView.getSettings().setDomStorageEnabled(true);
-        hiddenWebView.getSettings().setUserAgentString("Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Mobile Safari/537.36");
-        hiddenWebView.setWebViewClient(new WebViewClient() {
-            @Override
-            public void onPageFinished(WebView view, String url) {
-                new android.os.Handler().postDelayed(new Runnable() {
-                    @Override
-                    public void run() {
-                        parseScpList();
-                    }
-                }, 4000);
-            }
-        });
-
-        // Настройка Spinner (категории)
-        ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<>(this,
-                android.R.layout.simple_spinner_item, categories);
-        spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        categorySpinner.setAdapter(spinnerAdapter);
-
-        // Список 50 популярных SCP (нужен для инициализации адаптера)
-        initScpList();
-        adapter = new SCPAdapter(new ArrayList<>(popularScpList), this);
+        adapter = new SCPAdapter(new ArrayList<>(), this);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         recyclerView.setAdapter(adapter);
 
-        // Обработка выбора категории
-        categorySpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+        setupCategoryButtons();
+
+        hiddenWebView = findViewById(R.id.hidden_webview);
+        hiddenWebView.getSettings().setJavaScriptEnabled(true);
+        hiddenWebView.setWebViewClient(new WebViewClient() {
             @Override
-            public void onItemSelected(android.widget.AdapterView<?> parent, android.view.View view, int position, long id) {
-                String categoryName = categories[position];
-                
-                // Сохраняем выбранную позицию
-                getPreferences(MODE_PRIVATE).edit().putInt("last_category_position", position).apply();
-
-                if (categoryName.equals("Популярные")) {
-                    adapter.updateList(popularScpList);
-                } else if (categoryData.containsKey(categoryName) && !categoryData.get(categoryName).isEmpty()) {
-                    // Берем данные из JSON если они есть
-                    adapter.updateList(categoryData.get(categoryName));
-                } else {
-                    // Иначе грузим через WebView
-                    String url = categoryUrls[position];
-                    if (url != null) {
-                        Toast.makeText(MainActivity.this, "Загрузка списка из сети...", Toast.LENGTH_SHORT).show();
-                        hiddenWebView.loadUrl(url);
-                    }
-                }
+            public void onPageFinished(WebView view, String url) {
+                new android.os.Handler().postDelayed(() -> parseScpList(), 4000);
             }
-
-            @Override public void onNothingSelected(android.widget.AdapterView<?> parent) {}
         });
 
-        // Восстановление сохраненной позиции
-        int savedPosition = getPreferences(MODE_PRIVATE).getInt("last_category_position", 0);
-        if (savedPosition > 0 && savedPosition < categories.length) {
-            categorySpinner.setSelection(savedPosition);
-        }
-
-        // Логика поиска
         searchField.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
@@ -150,6 +114,49 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
             }
             @Override public void afterTextChanged(Editable s) {}
         });
+    }
+
+    private void setupCategoryButtons() {
+        GridLayout grid = findViewById(R.id.categories_grid);
+        grid.removeAllViews();
+        for (String category : categories) {
+            Button btn = new Button(this);
+            btn.setText(category);
+            GridLayout.LayoutParams params = new GridLayout.LayoutParams();
+            params.width = 0;
+            params.height = GridLayout.LayoutParams.WRAP_CONTENT;
+            params.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f);
+            params.setMargins(8, 8, 8, 8);
+            btn.setLayoutParams(params);
+            btn.setOnClickListener(v -> loadCategory(category));
+            grid.addView(btn);
+        }
+    }
+
+    private void loadCategory(String categoryName) {
+        toolbar.setTitle(categoryName);
+        categoriesLayout.setVisibility(View.GONE);
+        listLayout.setVisibility(View.VISIBLE);
+
+        List<SCPObject> list = categoryData.get(categoryName);
+        if (list != null && !list.isEmpty()) {
+            updateFavoritesInList(list);
+            adapter.updateList(list);
+        } else {
+            // Find URL
+            int index = -1;
+            for(int i=0; i<categories.length; i++) if(categories[i].equals(categoryName)) index = i;
+            if (index != -1) {
+                Toast.makeText(this, "Загрузка списка из сети...", Toast.LENGTH_SHORT).show();
+                hiddenWebView.loadUrl(categoryUrls[index]);
+            }
+        }
+    }
+
+    private void updateFavoritesInList(List<SCPObject> list) {
+        for (SCPObject scp : list) {
+            scp.setFavorite(dbHelper.isFavorite(scp.getNumber()));
+        }
     }
 
     private void loadJsonData() {
@@ -182,143 +189,105 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
         }
     }
 
-    private void parseScpList() {
-        String js = "(function() { var res=[]; var seen={}; var lis=document.querySelectorAll('li'); for(var i=0;i<lis.length;i++){ var li=lis[i]; var aTags=li.querySelectorAll('a'); for(var j=0;j<aTags.length;j++){ var a=aTags[j]; var href=a.getAttribute('href')||''; var match=href.match(/\\/(scp-\\d+(?:-[a-z]+)*)/i); if(match){ var id=match[1].toUpperCase(); if(!seen[id]){ seen[id]=true; var title=li.textContent; title=title.replace(new RegExp(id, 'i'), '').replace(a.textContent, '').replace(/^[\\s\\-\\—\\–\\:\\[\\]]+/, '').replace(/\\n/g, ' ').replace(/\\s+/g, ' ').trim(); if(!title) title='Объект '+id; res.push(id+'|||'+title); } break; } } } return res.join('###'); })();";
-
-        hiddenWebView.evaluateJavascript(js, new ValueCallback<String>() {
-            @Override
-            public void onReceiveValue(final String value) {
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (value == null || value.equals("null") || value.isEmpty()) {
-                            Toast.makeText(MainActivity.this, "Ничего не найдено", Toast.LENGTH_SHORT).show();
-                            return;
-                        }
-
-                        // 2) Распарси полученную строку (сначала убери кавычки)
-                        String data = value;
-                        if (data.startsWith("\"") && data.endsWith("\"")) {
-                            data = data.substring(1, data.length() - 1);
-                        }
-                        // Убираем экранирование, которое может добавить evaluateJavascript
-                        data = data.replace("\\\\", "\\").replace("\\\"", "\"");
-
-                        // split("###")
-                        String[] items = data.split("###");
-
-                        // 3) ОЧИСТИ старый список объектов
-                        if (scpList == null) {
-                            scpList = new ArrayList<>();
-                        }
-                        scpList.clear();
-
-                        // 4) В цикле добавь новые объекты в список
-                        for (String item : items) {
-                            // split("\\|\\|\\|")
-                            String[] parts = item.split("\\|\\|\\|");
-                            if (parts.length >= 2) {
-                                String num = parts[0].trim();
-                                String title = parts[1].trim();
-                                if (!num.isEmpty()) {
-                                    scpList.add(new SCPObject(num, title));
-                                }
-                            }
-                        }
-
-                        // 5) ОБНОВИ адаптер
-                        adapter.updateList(scpList);
-
-                        // 6) Оставь Toast с количеством найденных объектов
-                        Toast.makeText(MainActivity.this, "Найдено объектов: " + scpList.size(), Toast.LENGTH_SHORT).show();
-                    }
-                });
-            }
-        });
-    }
-
-    private void initScpList() {
-        popularScpList = new ArrayList<>();
-        // Сначала загружаем из БД (те, что добавил пользователь)
-        popularScpList.addAll(dbHelper.getAllSCPs());
-        
-        // Список 50 популярных объектов
-        List<SCPObject> defaultList = new ArrayList<>();
-        defaultList.add(new SCPObject("SCP-173", "Скульптура"));
-        defaultList.add(new SCPObject("SCP-049", "Чумной доктор"));
-        defaultList.add(new SCPObject("SCP-087", "Лестница"));
-        defaultList.add(new SCPObject("SCP-096", "Скромник"));
-        defaultList.add(new SCPObject("SCP-106", "Старик"));
-        defaultList.add(new SCPObject("SCP-682", "Неуязвимая рептилия"));
-        defaultList.add(new SCPObject("SCP-914", "Часовой механизм"));
-        defaultList.add(new SCPObject("SCP-999", "Щекочущий монстр"));
-        defaultList.add(new SCPObject("SCP-079", "Старый ИИ"));
-        defaultList.add(new SCPObject("SCP-035", "Маска одержимости"));
-        defaultList.add(new SCPObject("SCP-076", "Авель"));
-        defaultList.add(new SCPObject("SCP-073", "Каин"));
-        defaultList.add(new SCPObject("SCP-2521", "●●|●●●●●|●●|●"));
-        defaultList.add(new SCPObject("SCP-3000", "Ананта-Шеша"));
-        defaultList.add(new SCPObject("SCP-3008", "Абсолютно нормальная старая добрая Икея"));
-        defaultList.add(new SCPObject("SCP-5000", "Почему?"));
-        defaultList.add(new SCPObject("SCP-001", "Страж Врат"));
-        defaultList.add(new SCPObject("SCP-055", "[ДАННЫЕ УДАЛЕНЫ]"));
-        defaultList.add(new SCPObject("SCP-093", "Объект из Красного моря"));
-        defaultList.add(new SCPObject("SCP-1762", "Куда делись драконы?"));
-        defaultList.add(new SCPObject("SCP-2317", "Пожиратель миров"));
-        defaultList.add(new SCPObject("SCP-231", "Семь невест для семи рогов"));
-        defaultList.add(new SCPObject("SCP-2935", "О Смерть"));
-        defaultList.add(new SCPObject("SCP-3999", "Я есть центр всего, что происходит со мной"));
-        defaultList.add(new SCPObject("SCP-4999", "Тот, кто присматривает за нами"));
-        defaultList.add(new SCPObject("SCP-2000", "Деус Экс Машина"));
-        defaultList.add(new SCPObject("SCP-1471", "MalO ver1.0.0"));
-        defaultList.add(new SCPObject("SCP-012", "Скверная композиция"));
-        defaultList.add(new SCPObject("SCP-811", "Болотница"));
-        defaultList.add(new SCPObject("SCP-1048", "Мишка-строитель"));
-        defaultList.add(new SCPObject("SCP-239", "Дитя-ведьма"));
-        defaultList.add(new SCPObject("SCP-008", "Зомби-вирус"));
-        defaultList.add(new SCPObject("SCP-015", "Кошмарный трубопровод"));
-        defaultList.add(new SCPObject("SCP-053", "Девочка"));
-        defaultList.add(new SCPObject("SCP-066", "Игрушка Эрика"));
-        defaultList.add(new SCPObject("SCP-166", "Суккуб-подросток"));
-        defaultList.add(new SCPObject("SCP-2316", "Вы не узнаете тела в воде"));
-        defaultList.add(new SCPObject("SCP-3199", "Люди опровергнутые"));
-        defaultList.add(new SCPObject("SCP-3812", "Голос позади меня"));
-        defaultList.add(new SCPObject("SCP-4666", "Йольский парень"));
-        defaultList.add(new SCPObject("SCP-4000", "Табу"));
-        defaultList.add(new SCPObject("SCP-408", "Иллюзорные бабочки"));
-        defaultList.add(new SCPObject("SCP-420-J", "Самая лучшая [УДАЛЕНО] в мире"));
-        defaultList.add(new SCPObject("SCP-426", "Я — тостер"));
-        defaultList.add(new SCPObject("SCP-458", "Бесконечная коробка пиццы"));
-        defaultList.add(new SCPObject("SCP-500", "Панацея"));
-        defaultList.add(new SCPObject("SCP-504", "Критические помидоры"));
-        defaultList.add(new SCPObject("SCP-513", "Коровье ботало"));
-        defaultList.add(new SCPObject("SCP-610", "Ненавидящая плоть"));
-        defaultList.add(new SCPObject("SCP-939", "Со множеством голосов"));
-        
-        // Добавляем только те, которых еще нет в списке (уникальность по номеру)
-        for (SCPObject defaultScp : defaultList) {
-            boolean exists = false;
-            for (SCPObject existing : popularScpList) {
-                if (existing.getNumber().equalsIgnoreCase(defaultScp.getNumber())) {
-                    exists = true;
-                    break;
-                }
-            }
-            if (!exists) {
-                popularScpList.add(defaultScp);
-            }
-        }
-    }
-
     @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.main_menu, menu);
+    public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+        int id = item.getItemId();
+        if (id == R.id.nav_categories) {
+            showCategories();
+        } else if (id == R.id.nav_random) {
+            openRandomArticle();
+        } else if (id == R.id.nav_favorites) {
+            showFavorites();
+        } else if (id == R.id.nav_saved) {
+            showSaved();
+        }
+        drawerLayout.closeDrawer(GravityCompat.START);
         return true;
     }
 
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        return super.onOptionsItemSelected(item);
+    private void showCategories() {
+        toolbar.setTitle(R.string.app_name);
+        categoriesLayout.setVisibility(View.VISIBLE);
+        listLayout.setVisibility(View.GONE);
+    }
+
+    private void showFavorites() {
+        toolbar.setTitle("Избранное");
+        categoriesLayout.setVisibility(View.GONE);
+        listLayout.setVisibility(View.VISIBLE);
+        List<SCPObject> favorites = dbHelper.getFavorites();
+        adapter.updateList(favorites);
+    }
+
+    private void showSaved() {
+        toolbar.setTitle("Сохраненные");
+        categoriesLayout.setVisibility(View.GONE);
+        listLayout.setVisibility(View.VISIBLE);
+        
+        List<SCPObject> savedList = new ArrayList<>();
+        File dir = getFilesDir();
+        File[] files = dir.listFiles((d, name) -> name.endsWith(".html"));
+        if (files != null) {
+            for (File f : files) {
+                String number = f.getName().replace(".html", "");
+                SCPObject scp = dbHelper.getSCP(number);
+                if (scp == null) {
+                    String title = findTitle(number);
+                    scp = new SCPObject(number, title);
+                    scp.setFavorite(dbHelper.isFavorite(number));
+                }
+                savedList.add(scp);
+            }
+        }
+        adapter.updateList(savedList);
+    }
+
+    private String findTitle(String number) {
+        // Check DB first
+        SCPObject fromDb = dbHelper.getSCP(number);
+        if (fromDb != null && fromDb.getTitle() != null) return fromDb.getTitle();
+
+        for (List<SCPObject> list : categoryData.values()) {
+            for (SCPObject scp : list) {
+                if (scp.getNumber().equalsIgnoreCase(number)) return scp.getTitle();
+            }
+        }
+        return "Объект " + number;
+    }
+
+    private void openRandomArticle() {
+        List<SCPObject> all = new ArrayList<>();
+        for (List<SCPObject> list : categoryData.values()) {
+            all.addAll(list);
+        }
+        if (!all.isEmpty()) {
+            SCPObject randomScp = all.get(new Random().nextInt(all.size()));
+            openDetail(randomScp, false);
+        } else {
+            Toast.makeText(this, "Список пуст", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void parseScpList() {
+        String js = "(function() { var res=[]; var seen={}; var lis=document.querySelectorAll('li'); for(var i=0;i<lis.length;i++){ var li=lis[i]; var aTags=li.querySelectorAll('a'); for(var j=0;j<aTags.length;j++){ var a=aTags[j]; var href=a.getAttribute('href')||''; var match=href.match(/\\/(scp-\\d+(?:-[a-z]+)*)/i); if(match){ var id=match[1].toUpperCase(); if(!seen[id]){ seen[id]=true; var title=li.textContent; title=title.replace(new RegExp(id, 'i'), '').replace(a.textContent, '').replace(/^[\\s\\-\\—\\–\\:\\[\\]]+/, '').replace(/\\n/g, ' ').replace(/\\s+/g, ' ').trim(); if(!title) title='Объект '+id; res.push(id+'|||'+title); } break; } } } return res.join('###'); })();";
+
+        hiddenWebView.evaluateJavascript(js, value -> {
+            if (value == null || value.equals("null") || value.isEmpty()) return;
+            String data = value;
+            if (data.startsWith("\"") && data.endsWith("\"")) data = data.substring(1, data.length() - 1);
+            data = data.replace("\\\\", "\\").replace("\\\"", "\"");
+            String[] items = data.split("###");
+            List<SCPObject> newList = new ArrayList<>();
+            for (String item : items) {
+                String[] parts = item.split("\\|\\|\\|");
+                if (parts.length >= 2) {
+                    newList.add(new SCPObject(parts[0].trim(), parts[1].trim()));
+                }
+            }
+            updateFavoritesInList(newList);
+            adapter.updateList(newList);
+            Toast.makeText(MainActivity.this, "Найдено: " + newList.size(), Toast.LENGTH_SHORT).show();
+        });
     }
 
     @Override
@@ -331,10 +300,27 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
         openDetail(scp, true);
     }
 
+    @Override
+    public void onFavoriteClick(SCPObject scp) {
+        dbHelper.setFavorite(scp.getNumber(), scp.getTitle(), scp.isFavorite());
+        Toast.makeText(this, scp.isFavorite() ? "Добавлено в избранное" : "Удалено из избранного", Toast.LENGTH_SHORT).show();
+    }
+
     private void openDetail(SCPObject scp, boolean autoDownload) {
         Intent intent = new Intent(this, DetailActivity.class);
         intent.putExtra("scp", scp);
         intent.putExtra("auto_download", autoDownload);
         startActivity(intent);
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
+            drawerLayout.closeDrawer(GravityCompat.START);
+        } else if (listLayout.getVisibility() == View.VISIBLE) {
+            showCategories();
+        } else {
+            super.onBackPressed();
+        }
     }
 }
