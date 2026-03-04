@@ -9,12 +9,13 @@ import android.util.Log;
 import java.io.File;
 import java.io.IOException;
 
-import io.github.whitemagic2014.tts.EdgeTTS;
-import io.github.whitemagic2014.tts.TTSConfig;
+import io.github.whitemagic2014.tts.TTS;
+import io.github.whitemagic2014.tts.TTSVoice;
+import io.github.whitemagic2014.tts.bean.Voice;
 
 public class EdgeLibraryTTSClient implements TTSClient {
     private static final String TAG = "EdgeTTSClient";
-    private static final String VOICE = "ru-RU-SvetlanaNeural";
+    private static final String VOICE_NAME = "ru-RU-SvetlanaNeural";
 
     private Context context;
     private MediaPlayer mediaPlayer;
@@ -88,12 +89,17 @@ public class EdgeLibraryTTSClient implements TTSClient {
                 if (cacheFile.exists()) {
                     cacheFile.delete();
                 }
-                
-                TTSConfig config = new TTSConfig.Builder()
-                        .voice(VOICE)
-                        .build();
-                EdgeTTS tts = new EdgeTTS(config);
-                tts.save(text, cacheFile.getAbsolutePath());
+
+                Voice voice = TTSVoice.provides().stream()
+                        .filter(v -> VOICE_NAME.equals(v.getShortName()))
+                        .findFirst()
+                        .orElse(TTSVoice.provides().get(0));
+
+                TTS tts = new TTS(voice, text);
+                try (java.io.ByteArrayOutputStream stream = tts.transToAudioStream();
+                     java.io.FileOutputStream fos = new java.io.FileOutputStream(cacheFile)) {
+                    stream.writeTo(fos);
+                }
                 return true;
             } catch (Exception e) {
                 Log.e(TAG, "Download error", e);
@@ -117,9 +123,13 @@ public class EdgeLibraryTTSClient implements TTSClient {
         try {
             mediaPlayer.reset();
             mediaPlayer.setDataSource(cacheFile.getAbsolutePath());
-            mediaPlayer.setPlaybackParams(mediaPlayer.getPlaybackParams().setSpeed(currentSpeed));
             mediaPlayer.setOnPreparedListener(mp -> {
                 isPlaying = true;
+                try {
+                    mp.setPlaybackParams(mp.getPlaybackParams().setSpeed(currentSpeed));
+                } catch (Exception e) {
+                    Log.e(TAG, "Error setting speed", e);
+                }
                 mp.start();
                 if (playbackListener != null) {
                     playbackListener.onPlaybackStateChanged(true);

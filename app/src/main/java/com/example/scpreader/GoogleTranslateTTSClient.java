@@ -107,9 +107,13 @@ public class GoogleTranslateTTSClient implements TTSClient {
             String url = TTS_URL_BASE + URLEncoder.encode(chunks.get(index), "UTF-8");
             currentPlayer.reset();
             currentPlayer.setDataSource(url);
-            currentPlayer.setPlaybackParams(currentPlayer.getPlaybackParams().setSpeed(currentSpeed));
             currentPlayer.setOnPreparedListener(mp -> {
                 if (isPlaying && currentChunkIndex == index) {
+                    try {
+                        mp.setPlaybackParams(mp.getPlaybackParams().setSpeed(currentSpeed));
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error setting speed", e);
+                    }
                     mp.start();
                     prepareNextChunk();
                 }
@@ -130,9 +134,13 @@ public class GoogleTranslateTTSClient implements TTSClient {
             String url = TTS_URL_BASE + URLEncoder.encode(chunks.get(nextIndex), "UTF-8");
             nextPlayer.reset();
             nextPlayer.setDataSource(url);
-            nextPlayer.setPlaybackParams(nextPlayer.getPlaybackParams().setSpeed(currentSpeed));
             nextPlayer.setOnPreparedListener(mp -> {
                 if (preparedChunkIndex == nextIndex) {
+                    try {
+                        mp.setPlaybackParams(mp.getPlaybackParams().setSpeed(currentSpeed));
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error setting speed", e);
+                    }
                     isNextPlayerPrepared = true;
                 }
             });
