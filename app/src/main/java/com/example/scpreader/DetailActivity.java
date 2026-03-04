@@ -12,7 +12,8 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.widget.ProgressBar;
+import android.widget.RelativeLayout;
+import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import android.content.Intent;
 import android.widget.Button;
@@ -27,7 +28,7 @@ import java.io.Serializable;
 
 public class DetailActivity extends AppCompatActivity {
     private WebView webView;
-    private ProgressBar progressBar;
+    private RelativeLayout loadingOverlay;
     private Button btnDownload;
     private Button btnUpdate;
     private Button btnBack;
@@ -41,7 +42,7 @@ public class DetailActivity extends AppCompatActivity {
 
         dbHelper = new DatabaseHelper(this);
         webView = findViewById(R.id.webview);
-        progressBar = findViewById(R.id.progressBar);
+        loadingOverlay = findViewById(R.id.loadingOverlay);
         btnDownload = findViewById(R.id.btnDownload);
         btnUpdate = findViewById(R.id.btnUpdate);
         btnBack = findViewById(R.id.btnBack);
@@ -68,6 +69,7 @@ public class DetailActivity extends AppCompatActivity {
             });
 
             btnUpdate.setOnClickListener(v -> {
+                loadingOverlay.setVisibility(View.VISIBLE);
                 webView.reload();
             });
 
@@ -129,9 +131,24 @@ public class DetailActivity extends AppCompatActivity {
         
         webView.setWebViewClient(new WebViewClient() {
             @Override
+            public void onPageStarted(WebView view, String url, Bitmap favicon) {
+                super.onPageStarted(view, url, favicon);
+                loadingOverlay.setVisibility(View.VISIBLE);
+            }
+
+            @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
-                view.evaluateJavascript("javascript:(function() { var e = ['header', 'top-bar', 'side-bar', 'footer', 'page-options-bottom']; for (var i=0; i<e.length; i++) { var el = document.getElementById(e[i]); if(el) el.style.display='none'; } var mc = document.getElementById('main-content'); if(mc) { mc.style.marginLeft='0'; mc.style.padding='10px'; } })()", null);
+                String js = "javascript:(function() { " +
+                        "var style = document.createElement('style'); " +
+                        "style.innerHTML = 'body { background-color: #121212 !important; color: #E0E0E0 !important; } " +
+                        ".page-rate-widget-box, .rate-box-with-margin, .page-tags, #page-info, #footer, #license-area { display: none !important; }'; " +
+                        "document.head.appendChild(style); " +
+                        "return true; " +
+                        "})()";
+                view.evaluateJavascript(js, value -> {
+                    loadingOverlay.setVisibility(View.GONE);
+                });
             }
         });
         webView.setWebChromeClient(new WebChromeClient());
@@ -143,7 +160,7 @@ public class DetailActivity extends AppCompatActivity {
         String url = "https://scpfoundation.net/scp-" + number;
 
         if (file.exists()) {
-            webView.getSettings().setJavaScriptEnabled(false);
+            webView.getSettings().setJavaScriptEnabled(true);
             webView.getSettings().setBlockNetworkLoads(true);
             try {
                 StringBuilder content = new StringBuilder();
