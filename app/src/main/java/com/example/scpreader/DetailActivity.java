@@ -23,9 +23,12 @@ import java.io.Serializable;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.media.AudioAttributes;
-import android.media.MediaPlayer;
+import android.speech.tts.TextToSpeech;
+import android.speech.tts.Voice;
+import java.util.Locale;
+import java.util.Set;
 
-public class DetailActivity extends AppCompatActivity {
+public class DetailActivity extends AppCompatActivity implements TextToSpeech.OnInitListener {
     private WebView webView;
     private RelativeLayout loadingOverlay;
     private Button btnDownload;
@@ -34,10 +37,9 @@ public class DetailActivity extends AppCompatActivity {
     private SCPObject scp;
     private DatabaseHelper dbHelper;
     
-    private EdgeTTSClient ttsClient;
-    private MediaPlayer mediaPlayer;
+    private TextToSpeech tts;
     private boolean isSpeaking = false;
-    private String tempAudioPath;
+    private boolean isTtsInitialized = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,7 +53,7 @@ public class DetailActivity extends AppCompatActivity {
         btnUpdate = findViewById(R.id.btnUpdate);
         btnBack = findViewById(R.id.btnBack);
 
-        tempAudioPath = new File(getCacheDir(), "tts_audio.mp3").getAbsolutePath();
+        tts = new TextToSpeech(this, this);
         
         Intent intent = getIntent();
         if (intent != null && intent.hasExtra("scp")) {
@@ -142,7 +144,56 @@ public class DetailActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
+    @Override
+    public void onInit(int status) {
+        if (status == TextToSpeech.SUCCESS) {
+            int result = tts.setLanguage(new Locale("ru", "RU"));
+            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                Toast.makeText(this, "Русский язык не поддерживается", Toast.LENGTH_SHORT).show();
+            } else {
+                isTtsInitialized = true;
+                
+                // Настройка AudioAttributes
+                tts.setAudioAttributes(new AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                        .build());
+                
+                // Выбор качественного сетевого женского голоса
+                try {
+                    Set<Voice> voices = tts.getVoices();
+                    if (voices != null) {
+                        Voice selectedVoice = null;
+                        for (Voice voice : voices) {
+                            String name = voice.getName().toLowerCase();
+                            Locale locale = voice.getLocale();
+                            
+                            if (locale.getLanguage().equals("ru") && name.contains("network")) {
+                                // Ищем женский голос (обычно не содержит "male")
+                                if (!name.contains("male")) {
+                                    selectedVoice = voice;
+                                    break;
+                                }
+                            }
+                        }
+                        if (selectedVoice != null) {
+                            tts.setVoice(selectedVoice);
+                        }
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        } else {
+            Toast.makeText(this, "Ошибка инициализации TTS", Toast.LENGTH_SHORT).show();
+        }
+    }
+
     private void startTTS() {
+        if (!isTtsInitialized) {
+            Toast.makeText(this, "TTS не готов", Toast.LENGTH_SHORT).show();
+            return;
+        }
         // Вызываем JS для получения текста
         webView.evaluateJavascript("javascript:window.TEXTOUT.extract(document.body.innerText);", null);
     }
@@ -150,42 +201,9 @@ public class DetailActivity extends AppCompatActivity {
     private void stopTTS() {
         isSpeaking = false;
         invalidateOptionsMenu();
-        if (ttsClient != null) {
-            ttsClient.stop();
+        if (tts != null) {
+            tts.stop();
         }
-        if (mediaPlayer != null) {
-            if (mediaPlayer.isPlaying()) {
-                mediaPlayer.stop();
-            }
-            mediaPlayer.release();
-            mediaPlayer = null;
-        }
-    }
-
-    private void playAudio(String path) {
-        runOnUiThread(() -> {
-            try {
-                if (mediaPlayer != null) {
-                    mediaPlayer.release();
-                }
-                mediaPlayer = new MediaPlayer();
-                mediaPlayer.setAudioAttributes(new AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_MEDIA)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                        .build());
-                mediaPlayer.setDataSource(path);
-                mediaPlayer.setOnPreparedListener(mp -> mp.start());
-                mediaPlayer.setOnCompletionListener(mp -> {
-                    isSpeaking = false;
-                    invalidateOptionsMenu();
-                });
-                mediaPlayer.prepareAsync();
-            } catch (Exception e) {
-                Toast.makeText(this, "Ошибка воспроизведения: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                isSpeaking = false;
-                invalidateOptionsMenu();
-            }
-        });
     }
 
     private void setupWebView() {
@@ -225,31 +243,57 @@ public class DetailActivity extends AppCompatActivity {
                     return;
                 }
                 
-                // Очистка текста: убираем лишние пробелы и пустые строки
-                String cleanText = text.replaceAll("\\s+", " ").trim();
+                // Очистка текста
+                final String cleanText = text.replaceAll("\\s+", " ").trim();
                 
                 runOnUiThread(() -> {
                     isSpeaking = true;
                     invalidateOptionsMenu();
-                    Toast.makeText(DetailActivity.this, "Генерация озвучки...", Toast.LENGTH_SHORT).show();
-                });
-                
-                ttsClient = new EdgeTTSClient(tempAudioPath, new EdgeTTSClient.TTSCallback() {
-                    @Override
-                    public void onFinish() {
-                        playAudio(tempAudioPath);
-                    }
+                    Toast.makeText(DetailActivity.this, "Запуск озвучки...", Toast.LENGTH_SHORT).show();
+                    
+                    tts.setOnUtteranceProgressListener(new android.speech.tts.UtteranceProgressListener() {
+                        @Override
+                        public void onStart(String utteranceId) {}
 
-                    @Override
-                    public void onError(String error) {
-                        runOnUiThread(() -> {
-                            isSpeaking = false;
-                            invalidateOptionsMenu();
-                            Toast.makeText(DetailActivity.this, "Ошибка TTS: " + error, Toast.LENGTH_SHORT).show();
-                        });
+                        @Override
+                        public void onDone(String utteranceId) {
+                            // Проверяем, был ли это последний кусок
+                            if (utteranceId.endsWith("_last")) {
+                                runOnUiThread(() -> {
+                                    isSpeaking = false;
+                                    invalidateOptionsMenu();
+                                });
+                            }
+                        }
+
+                        @Override
+                        public void onError(String utteranceId) {
+                            runOnUiThread(() -> {
+                                isSpeaking = false;
+                                invalidateOptionsMenu();
+                            });
+                        }
+                    });
+
+                    // Разбиение на куски
+                    int maxLen = tts.getMaxSpeechInputLength();
+                    if (maxLen > 4000) maxLen = 4000; // На некоторых устройствах лимит слишком велик
+                    
+                    if (cleanText.length() <= maxLen) {
+                        tts.speak(cleanText, TextToSpeech.QUEUE_FLUSH, null, "utterance_last");
+                    } else {
+                        int start = 0;
+                        while (start < cleanText.length()) {
+                            int end = Math.min(start + maxLen, cleanText.length());
+                            String chunk = cleanText.substring(start, end);
+                            boolean isLast = (end == cleanText.length());
+                            
+                            tts.speak(chunk, start == 0 ? TextToSpeech.QUEUE_FLUSH : TextToSpeech.QUEUE_ADD, 
+                                    null, isLast ? "utterance_last" : "utterance_" + start);
+                            start = end;
+                        }
                     }
                 });
-                ttsClient.synthesize(cleanText);
             }
         }, "TEXTOUT");
 
@@ -322,6 +366,9 @@ public class DetailActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         stopTTS();
+        if (tts != null) {
+            tts.shutdown();
+        }
         if (webView != null) {
             webView.destroy();
         }
