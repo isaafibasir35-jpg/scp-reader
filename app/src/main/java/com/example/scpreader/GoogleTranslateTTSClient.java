@@ -11,13 +11,21 @@ import java.util.List;
 
 public class GoogleTranslateTTSClient {
     private static final String TAG = "GoogleTTSClient";
-    private static final int MAX_CHUNK_LENGTH = 150;
-    private static final String TTS_URL_BASE = "https://translate.google.com/translate_tts?ie=UTF-8&tl=ru&client=tw-ob&q=";
+    private static final int MAX_CHUNK_LENGTH = 200;
+    // Добавлен параметр ttsspeed=1 для нормальной скорости (по умолчанию бывает медленнее)
+    // Можно попробовать ttsspeed=1.1 или выше, если поддерживается, но 1 - стандарт.
+    private static final String TTS_URL_BASE = "https://translate.google.com/translate_tts?ie=UTF-8&tl=ru&client=tw-ob&ttsspeed=1&q=";
 
-    private MediaPlayer mediaPlayer;
+    private MediaPlayer playerA;
+    private MediaPlayer playerB;
+    private MediaPlayer currentPlayer;
+    private MediaPlayer nextPlayer;
+
     private List<String> chunks = new ArrayList<>();
     private int currentChunkIndex = -1;
+    private int preparedChunkIndex = -1;
     private boolean isPlaying = false;
+    private boolean isNextPlayerPrepared = false;
     private OnPlaybackEventListener playbackListener;
 
     public interface OnPlaybackEventListener {
@@ -28,31 +36,56 @@ public class GoogleTranslateTTSClient {
 
     public GoogleTranslateTTSClient(OnPlaybackEventListener listener) {
         this.playbackListener = listener;
-        initMediaPlayer();
+        playerA = createMediaPlayer();
+        playerB = createMediaPlayer();
     }
 
-    private void initMediaPlayer() {
-        if (mediaPlayer != null) {
-            mediaPlayer.release();
-        }
-        mediaPlayer = new MediaPlayer();
-        mediaPlayer.setAudioAttributes(new AudioAttributes.Builder()
+    private MediaPlayer createMediaPlayer() {
+        MediaPlayer mp = new MediaPlayer();
+        mp.setAudioAttributes(new AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_MEDIA)
                 .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                 .build());
 
-        mediaPlayer.setOnCompletionListener(mp -> {
-            playNextChunk();
-        });
-
-        mediaPlayer.setOnErrorListener((mp, what, extra) -> {
+        mp.setOnCompletionListener(this::onPlayerCompletion);
+        mp.setOnErrorListener((player, what, extra) -> {
             Log.e(TAG, "MediaPlayer error: what=" + what + ", extra=" + extra);
-            stop();
-            if (playbackListener != null) {
-                playbackListener.onPlaybackError("Ошибка воспроизведения: " + what);
+            if (player == currentPlayer) {
+                stop();
+                if (playbackListener != null) {
+                    playbackListener.onPlaybackError("Ошибка воспроизведения: " + what);
+                }
             }
             return true;
         });
+        return mp;
+    }
+
+    private void onPlayerCompletion(MediaPlayer mp) {
+        if (!isPlaying) return;
+
+        if (isNextPlayerPrepared && preparedChunkIndex == currentChunkIndex + 1) {
+            // Мгновенно переключаемся на заранее загруженный плеер
+            MediaPlayer temp = currentPlayer;
+            currentPlayer = nextPlayer;
+            nextPlayer = temp;
+
+            currentChunkIndex++;
+            isNextPlayerPrepared = false;
+            currentPlayer.start();
+            
+            // Начинаем готовить следующий чанк в освободившемся плеере
+            prepareNextChunk();
+        } else {
+            // Если следующий еще не готов, ждем или останавливаемся
+            currentChunkIndex++;
+            if (currentChunkIndex < chunks.size()) {
+                // Это не должно происходить часто при нормальной сети
+                playChunkDirectly(currentChunkIndex);
+            } else {
+                stop();
+            }
+        }
     }
 
     public void play(String text) {
@@ -64,62 +97,86 @@ public class GoogleTranslateTTSClient {
             }
             return;
         }
-        currentChunkIndex = 0;
+
         isPlaying = true;
+        currentChunkIndex = 0;
+        preparedChunkIndex = -1;
+        isNextPlayerPrepared = false;
+
         if (playbackListener != null) {
             playbackListener.onPlaybackStarted();
         }
-        playChunk(chunks.get(currentChunkIndex));
+
+        // Запускаем первый чанк
+        currentPlayer = playerA;
+        nextPlayer = playerB;
+        playChunkDirectly(currentChunkIndex);
+    }
+
+    private void playChunkDirectly(int index) {
+        try {
+            String url = TTS_URL_BASE + URLEncoder.encode(chunks.get(index), "UTF-8");
+            currentPlayer.reset();
+            currentPlayer.setDataSource(url);
+            currentPlayer.setOnPreparedListener(mp -> {
+                if (isPlaying && currentChunkIndex == index) {
+                    mp.start();
+                    prepareNextChunk();
+                }
+            });
+            currentPlayer.prepareAsync();
+        } catch (IOException e) {
+            handleError("Ошибка при запуске чанка", e);
+        }
+    }
+
+    private void prepareNextChunk() {
+        int nextIndex = currentChunkIndex + 1;
+        if (nextIndex >= chunks.size()) return;
+
+        try {
+            preparedChunkIndex = nextIndex;
+            isNextPlayerPrepared = false;
+            String url = TTS_URL_BASE + URLEncoder.encode(chunks.get(nextIndex), "UTF-8");
+            nextPlayer.reset();
+            nextPlayer.setDataSource(url);
+            nextPlayer.setOnPreparedListener(mp -> {
+                if (preparedChunkIndex == nextIndex) {
+                    isNextPlayerPrepared = true;
+                }
+            });
+            nextPlayer.prepareAsync();
+        } catch (IOException e) {
+            Log.e(TAG, "Error preparing next chunk", e);
+            // Если не удалось подготовить заранее, попробуем в onCompletion
+        }
     }
 
     public void stop() {
         isPlaying = false;
-        if (mediaPlayer != null) {
-            mediaPlayer.reset();
-        }
+        if (playerA != null) playerA.reset();
+        if (playerB != null) playerB.reset();
         chunks.clear();
         currentChunkIndex = -1;
+        preparedChunkIndex = -1;
+        isNextPlayerPrepared = false;
         if (playbackListener != null) {
             playbackListener.onPlaybackStopped();
         }
     }
 
-    private void playNextChunk() {
-        if (!isPlaying) return;
-
-        currentChunkIndex++;
-        if (currentChunkIndex < chunks.size()) {
-            playChunk(chunks.get(currentChunkIndex));
-        } else {
-            stop();
+    private void handleError(String message, Exception e) {
+        Log.e(TAG, message, e);
+        if (playbackListener != null) {
+            playbackListener.onPlaybackError(message);
         }
-    }
-
-    private void playChunk(String chunk) {
-        try {
-            String url = TTS_URL_BASE + URLEncoder.encode(chunk, "UTF-8");
-            mediaPlayer.reset();
-            mediaPlayer.setDataSource(url);
-            mediaPlayer.prepareAsync();
-            mediaPlayer.setOnPreparedListener(mp -> {
-                if (isPlaying) {
-                    mp.start();
-                }
-            });
-        } catch (IOException e) {
-            Log.e(TAG, "Error playing chunk", e);
-            if (playbackListener != null) {
-                playbackListener.onPlaybackError("Ошибка при подготовке аудио");
-            }
-            stop();
-        }
+        stop();
     }
 
     private List<String> splitText(String text) {
         List<String> result = new ArrayList<>();
         if (text == null || text.isEmpty()) return result;
 
-        // Очистка от лишних пробелов
         text = text.replaceAll("\\s+", " ").trim();
 
         int start = 0;
@@ -127,7 +184,6 @@ public class GoogleTranslateTTSClient {
             int end = Math.min(start + MAX_CHUNK_LENGTH, text.length());
             
             if (end < text.length()) {
-                // Ищем место для разрыва (точку, восклицательный знак, вопросительный знак или пробел)
                 int lastPunctuation = -1;
                 char[] punctuationMarks = {'.', '!', '?', ';', ',', ':'};
                 
@@ -141,7 +197,6 @@ public class GoogleTranslateTTSClient {
                 if (lastPunctuation != -1) {
                     end = lastPunctuation + 1;
                 } else {
-                    // Если знаков препинания не нашли, пробуем по пробелу
                     int lastSpace = text.lastIndexOf(' ', end);
                     if (lastSpace > start) {
                         end = lastSpace;
@@ -160,9 +215,14 @@ public class GoogleTranslateTTSClient {
     }
 
     public void release() {
-        if (mediaPlayer != null) {
-            mediaPlayer.release();
-            mediaPlayer = null;
+        isPlaying = false;
+        if (playerA != null) {
+            playerA.release();
+            playerA = null;
+        }
+        if (playerB != null) {
+            playerB.release();
+            playerB = null;
         }
     }
 }
