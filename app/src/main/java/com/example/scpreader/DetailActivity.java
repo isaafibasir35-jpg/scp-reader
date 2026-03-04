@@ -99,6 +99,7 @@ public class DetailActivity extends AppCompatActivity {
     }
 
     private void setupWebView() {
+        webView.setBackgroundColor(android.graphics.Color.parseColor("#121212"));
         WebSettings settings = webView.getSettings();
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
@@ -121,7 +122,7 @@ public class DetailActivity extends AppCompatActivity {
                     if (scp != null) {
                         dbHelper.addOrUpdateSCP(scp);
                     }
-                    runOnUiThread(() -> Toast.makeText(DetailActivity.this, "Статья сохранена", Toast.LENGTH_SHORT).show());
+                    runOnUiThread(() -> Toast.makeText(DetailActivity.this, "Статья сохранена", Toast.makeText.LENGTH_SHORT).show());
                 } catch(Exception e){}
             }
         }, "HTMLOUT");
@@ -141,13 +142,21 @@ public class DetailActivity extends AppCompatActivity {
                 super.onPageFinished(view, url);
                 String js = "javascript:(function() { " +
                         "var style = document.createElement('style'); " +
-                        "style.innerHTML = 'body { background-color: #121212 !important; color: #E0E0E0 !important; } " +
-                        ".page-rate-widget-box, .rate-box-with-margin, .page-tags, #page-info, #footer, #license-area { display: none !important; }'; " +
+                        "style.innerHTML = 'html, body { background-color: #121212 !important; color: #E0E0E0 !important; } " +
+                        "#header, #top-bar, nav, #side-bar, #login-status, #search-top-box, #navi-bar, #navi-bar-shadow, #breadcrumbs, " +
+                        ".page-rate-widget-box, .rate-box-with-margin, .rate-box-inline-with-margin, .credit-rate, .rate-box, " +
+                        ".wd-rate-widget, .credit-rating-box, .rate-box-with-margin, .rate-box-inline-with-margin, " +
+                        ".page-tags, #page-info-section, #page-info-break, #footer, #license-area, #page-options-bottom, " +
+                        "#page-options-container, #action-area, #discuss-button, .bottom-group, .license-area, " +
+                        ".printuser, #odialog-container, .wd-editor-mobile-indicator, #header-extra-div-1, #header-extra-div-2, " +
+                        "#header-extra-div-3, .error-block, #content-panel { display: none !important; } " +
+                        "#main-content { margin: 0 !important; padding: 15px !important; width: 100% !important; border: none !important; } " +
+                        "#page-content { font-size: 1.1em !important; line-height: 1.6 !important; }'; " +
                         "document.head.appendChild(style); " +
                         "return true; " +
                         "})()";
                 view.evaluateJavascript(js, value -> {
-                    loadingOverlay.setVisibility(View.GONE);
+                    loadingOverlay.postDelayed(() -> loadingOverlay.setVisibility(View.GONE), 150);
                 });
             }
         });
