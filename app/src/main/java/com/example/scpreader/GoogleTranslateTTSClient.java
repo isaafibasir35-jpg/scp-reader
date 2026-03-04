@@ -55,7 +55,7 @@ public class GoogleTranslateTTSClient implements TTSClient {
     }
 
     private void onPlayerCompletion(MediaPlayer mp) {
-        if (!isPlaying) return;
+        if (!isPlaying || mp != currentPlayer) return;
 
         if (isNextPlayerPrepared && preparedChunkIndex == currentChunkIndex + 1) {
             MediaPlayer temp = currentPlayer;

@@ -220,7 +220,7 @@ public class DetailActivity extends AppCompatActivity {
                 if (extractedText.isEmpty()) {
                     webView.evaluateJavascript("javascript:window.TEXTOUT.extract(document.body.innerText);", null);
                 } else {
-                    if (ttsClient.getCurrentPosition() > 0 && isEdgeTts) {
+                    if (ttsClient.getCurrentPosition() > 0) {
                         ttsClient.resume();
                     } else {
                         ttsClient.play(extractedText);

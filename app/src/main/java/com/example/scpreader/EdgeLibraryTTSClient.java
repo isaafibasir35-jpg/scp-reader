@@ -90,10 +90,16 @@ public class EdgeLibraryTTSClient implements TTSClient {
                     cacheFile.delete();
                 }
 
-                Voice voice = TTSVoice.provides().stream()
+                java.util.List<Voice> voices = TTSVoice.provides();
+                if (voices == null || voices.isEmpty()) {
+                    Log.e(TAG, "No voices available from Edge TTS");
+                    return false;
+                }
+
+                Voice voice = voices.stream()
                         .filter(v -> VOICE_NAME.equals(v.getShortName()))
                         .findFirst()
-                        .orElse(TTSVoice.provides().get(0));
+                        .orElse(voices.get(0));
 
                 TTS tts = new TTS(voice, text);
                 try (java.io.ByteArrayOutputStream stream = tts.transToAudioStream();
