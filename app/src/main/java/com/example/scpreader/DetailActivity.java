@@ -23,6 +23,10 @@ import java.io.Serializable;
 import android.view.Menu;
 import android.view.MenuItem;
 
+import com.google.android.material.bottomsheet.BottomSheetDialog;
+import android.widget.RadioGroup;
+import android.widget.ImageButton;
+
 public class DetailActivity extends AppCompatActivity {
     private WebView webView;
     private RelativeLayout loadingOverlay;
@@ -32,8 +36,11 @@ public class DetailActivity extends AppCompatActivity {
     private SCPObject scp;
     private DatabaseHelper dbHelper;
     
-    private GoogleTranslateTTSClient ttsClient;
+    private TTSClient ttsClient;
     private boolean isSpeaking = false;
+    private String extractedText = "";
+    private float currentSpeed = 1.0f;
+    private boolean isEdgeTts = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,33 +54,7 @@ public class DetailActivity extends AppCompatActivity {
         btnUpdate = findViewById(R.id.btnUpdate);
         btnBack = findViewById(R.id.btnBack);
 
-        ttsClient = new GoogleTranslateTTSClient(new GoogleTranslateTTSClient.OnPlaybackEventListener() {
-            @Override
-            public void onPlaybackStarted() {
-                runOnUiThread(() -> {
-                    isSpeaking = true;
-                    invalidateOptionsMenu();
-                    Toast.makeText(DetailActivity.this, "Запуск озвучки...", Toast.LENGTH_SHORT).show();
-                });
-            }
-
-            @Override
-            public void onPlaybackStopped() {
-                runOnUiThread(() -> {
-                    isSpeaking = false;
-                    invalidateOptionsMenu();
-                });
-            }
-
-            @Override
-            public void onPlaybackError(String message) {
-                runOnUiThread(() -> {
-                    isSpeaking = false;
-                    invalidateOptionsMenu();
-                    Toast.makeText(DetailActivity.this, message, Toast.LENGTH_SHORT).show();
-                });
-            }
-        });
+        initTTS(false);
         
         Intent intent = getIntent();
         if (intent != null && intent.hasExtra("scp")) {
@@ -131,6 +112,56 @@ public class DetailActivity extends AppCompatActivity {
             }
     }
 
+    private ImageButton dialogPlayPauseBtn;
+
+    private void initTTS(boolean useEdge) {
+        if (ttsClient != null) {
+            ttsClient.release();
+        }
+        
+        TTSClient.OnPlaybackEventListener listener = new TTSClient.OnPlaybackEventListener() {
+            private void updateUI(boolean playing) {
+                runOnUiThread(() -> {
+                    isSpeaking = playing;
+                    invalidateOptionsMenu();
+                    if (dialogPlayPauseBtn != null) {
+                        dialogPlayPauseBtn.setImageResource(playing ? R.drawable.ic_stop : R.drawable.ic_play_arrow);
+                    }
+                });
+            }
+
+            @Override
+            public void onPlaybackStarted() {
+                updateUI(true);
+                runOnUiThread(() -> Toast.makeText(DetailActivity.this, "Озвучка запущена", Toast.LENGTH_SHORT).show());
+            }
+
+            @Override
+            public void onPlaybackStopped() {
+                updateUI(false);
+            }
+
+            @Override
+            public void onPlaybackError(String message) {
+                updateUI(false);
+                runOnUiThread(() -> Toast.makeText(DetailActivity.this, message, Toast.LENGTH_SHORT).show());
+            }
+
+            @Override
+            public void onPlaybackStateChanged(boolean isPlaying) {
+                updateUI(isPlaying);
+            }
+        };
+
+        if (useEdge) {
+            ttsClient = new EdgeLibraryTTSClient(this, listener);
+        } else {
+            ttsClient = new GoogleTranslateTTSClient(listener);
+        }
+        ttsClient.setSpeed(currentSpeed);
+        isEdgeTts = useEdge;
+    }
+
     private void saveOffline() {
         webView.evaluateJavascript("javascript:window.HTMLOUT.save('<html>'+document.getElementsByTagName('html')[0].innerHTML+'</html>');", null);
     }
@@ -146,7 +177,7 @@ public class DetailActivity extends AppCompatActivity {
         MenuItem ttsItem = menu.findItem(R.id.action_tts);
         if (ttsItem != null) {
             ttsItem.setIcon(isSpeaking ? R.drawable.ic_stop : R.drawable.ic_play_arrow);
-            ttsItem.setTitle(isSpeaking ? "Остановить" : "Озвучить");
+            ttsItem.setTitle(isSpeaking ? "Плеер" : "Озвучить");
         }
         return super.onPrepareOptionsMenu(menu);
     }
@@ -154,18 +185,83 @@ public class DetailActivity extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == R.id.action_tts) {
-            if (isSpeaking) {
-                stopTTS();
-            } else {
-                startTTS();
-            }
+            showPlayerDialog();
             return true;
         }
         return super.onOptionsItemSelected(item);
     }
 
+    private void showPlayerDialog() {
+        BottomSheetDialog dialog = new BottomSheetDialog(this);
+        View view = getLayoutInflater().inflate(R.layout.dialog_player, null);
+        dialog.setContentView(view);
+
+        RadioGroup engineGroup = view.findViewById(R.id.engine_group);
+        engineGroup.check(isEdgeTts ? R.id.radio_edge : R.id.radio_google);
+        
+        engineGroup.setOnCheckedChangeListener((group, checkedId) -> {
+            boolean useEdge = (checkedId == R.id.radio_edge);
+            if (useEdge != isEdgeTts) {
+                boolean wasPlaying = isSpeaking;
+                stopTTS();
+                initTTS(useEdge);
+                if (wasPlaying && !extractedText.isEmpty()) {
+                    ttsClient.play(extractedText);
+                }
+            }
+        });
+
+        dialogPlayPauseBtn = view.findViewById(R.id.btn_play_pause);
+        dialogPlayPauseBtn.setImageResource(isSpeaking ? R.drawable.ic_stop : R.drawable.ic_play_arrow);
+        dialogPlayPauseBtn.setOnClickListener(v -> {
+            if (isSpeaking) {
+                ttsClient.pause();
+            } else {
+                if (extractedText.isEmpty()) {
+                    webView.evaluateJavascript("javascript:window.TEXTOUT.extract(document.body.innerText);", null);
+                } else {
+                    if (ttsClient.getCurrentPosition() > 0 && isEdgeTts) {
+                        ttsClient.resume();
+                    } else {
+                        ttsClient.play(extractedText);
+                    }
+                }
+            }
+        });
+
+        view.findViewById(R.id.btn_back_10).setOnClickListener(v -> {
+            int pos = ttsClient.getCurrentPosition();
+            ttsClient.seekTo(Math.max(0, pos - 10000));
+        });
+
+        view.findViewById(R.id.btn_forward_10).setOnClickListener(v -> {
+            int pos = ttsClient.getCurrentPosition();
+            int duration = ttsClient.getDuration();
+            if (duration > 0) {
+                ttsClient.seekTo(Math.min(duration, pos + 10000));
+            }
+        });
+
+        view.findViewById(R.id.btn_speed_1_0).setOnClickListener(v -> {
+            currentSpeed = 1.0f;
+            ttsClient.setSpeed(currentSpeed);
+        });
+
+        view.findViewById(R.id.btn_speed_1_2).setOnClickListener(v -> {
+            currentSpeed = 1.2f;
+            ttsClient.setSpeed(currentSpeed);
+        });
+
+        view.findViewById(R.id.btn_speed_1_5).setOnClickListener(v -> {
+            currentSpeed = 1.5f;
+            ttsClient.setSpeed(currentSpeed);
+        });
+
+        dialog.setOnDismissListener(d -> dialogPlayPauseBtn = null);
+        dialog.show();
+    }
+
     private void startTTS() {
-        // Вызываем JS для получения текста
         webView.evaluateJavascript("javascript:window.TEXTOUT.extract(document.body.innerText);", null);
     }
 
@@ -212,12 +308,11 @@ public class DetailActivity extends AppCompatActivity {
                     return;
                 }
                 
-                // Очистка текста
-                final String cleanText = text.replaceAll("\\s+", " ").trim();
+                extractedText = text.replaceAll("\\s+", " ").trim();
                 
                 runOnUiThread(() -> {
                     if (ttsClient != null) {
-                        ttsClient.play(cleanText);
+                        ttsClient.play(extractedText);
                     }
                 });
             }

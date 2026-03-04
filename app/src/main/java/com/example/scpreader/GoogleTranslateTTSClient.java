@@ -9,11 +9,9 @@ import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.List;
 
-public class GoogleTranslateTTSClient {
+public class GoogleTranslateTTSClient implements TTSClient {
     private static final String TAG = "GoogleTTSClient";
     private static final int MAX_CHUNK_LENGTH = 200;
-    // Добавлен параметр ttsspeed=1 для нормальной скорости (по умолчанию бывает медленнее)
-    // Можно попробовать ttsspeed=1.1 или выше, если поддерживается, но 1 - стандарт.
     private static final String TTS_URL_BASE = "https://translate.google.com/translate_tts?ie=UTF-8&tl=ru&client=tw-ob&ttsspeed=1&q=";
 
     private MediaPlayer playerA;
@@ -27,12 +25,7 @@ public class GoogleTranslateTTSClient {
     private boolean isPlaying = false;
     private boolean isNextPlayerPrepared = false;
     private OnPlaybackEventListener playbackListener;
-
-    public interface OnPlaybackEventListener {
-        void onPlaybackStarted();
-        void onPlaybackStopped();
-        void onPlaybackError(String message);
-    }
+    private float currentSpeed = 1.0f;
 
     public GoogleTranslateTTSClient(OnPlaybackEventListener listener) {
         this.playbackListener = listener;
@@ -65,7 +58,6 @@ public class GoogleTranslateTTSClient {
         if (!isPlaying) return;
 
         if (isNextPlayerPrepared && preparedChunkIndex == currentChunkIndex + 1) {
-            // Мгновенно переключаемся на заранее загруженный плеер
             MediaPlayer temp = currentPlayer;
             currentPlayer = nextPlayer;
             nextPlayer = temp;
@@ -74,13 +66,10 @@ public class GoogleTranslateTTSClient {
             isNextPlayerPrepared = false;
             currentPlayer.start();
             
-            // Начинаем готовить следующий чанк в освободившемся плеере
             prepareNextChunk();
         } else {
-            // Если следующий еще не готов, ждем или останавливаемся
             currentChunkIndex++;
             if (currentChunkIndex < chunks.size()) {
-                // Это не должно происходить часто при нормальной сети
                 playChunkDirectly(currentChunkIndex);
             } else {
                 stop();
@@ -88,6 +77,7 @@ public class GoogleTranslateTTSClient {
         }
     }
 
+    @Override
     public void play(String text) {
         stop();
         chunks = splitText(text);
@@ -107,7 +97,6 @@ public class GoogleTranslateTTSClient {
             playbackListener.onPlaybackStarted();
         }
 
-        // Запускаем первый чанк
         currentPlayer = playerA;
         nextPlayer = playerB;
         playChunkDirectly(currentChunkIndex);
@@ -118,6 +107,7 @@ public class GoogleTranslateTTSClient {
             String url = TTS_URL_BASE + URLEncoder.encode(chunks.get(index), "UTF-8");
             currentPlayer.reset();
             currentPlayer.setDataSource(url);
+            currentPlayer.setPlaybackParams(currentPlayer.getPlaybackParams().setSpeed(currentSpeed));
             currentPlayer.setOnPreparedListener(mp -> {
                 if (isPlaying && currentChunkIndex == index) {
                     mp.start();
@@ -140,6 +130,7 @@ public class GoogleTranslateTTSClient {
             String url = TTS_URL_BASE + URLEncoder.encode(chunks.get(nextIndex), "UTF-8");
             nextPlayer.reset();
             nextPlayer.setDataSource(url);
+            nextPlayer.setPlaybackParams(nextPlayer.getPlaybackParams().setSpeed(currentSpeed));
             nextPlayer.setOnPreparedListener(mp -> {
                 if (preparedChunkIndex == nextIndex) {
                     isNextPlayerPrepared = true;
@@ -148,10 +139,10 @@ public class GoogleTranslateTTSClient {
             nextPlayer.prepareAsync();
         } catch (IOException e) {
             Log.e(TAG, "Error preparing next chunk", e);
-            // Если не удалось подготовить заранее, попробуем в onCompletion
         }
     }
 
+    @Override
     public void stop() {
         isPlaying = false;
         if (playerA != null) playerA.reset();
@@ -165,6 +156,73 @@ public class GoogleTranslateTTSClient {
         }
     }
 
+    @Override
+    public void pause() {
+        if (currentPlayer != null && currentPlayer.isPlaying()) {
+            currentPlayer.pause();
+            if (playbackListener != null) {
+                playbackListener.onPlaybackStateChanged(false);
+            }
+        }
+    }
+
+    @Override
+    public void resume() {
+        if (currentPlayer != null && !currentPlayer.isPlaying()) {
+            currentPlayer.start();
+            if (playbackListener != null) {
+                playbackListener.onPlaybackStateChanged(true);
+            }
+        }
+    }
+
+    @Override
+    public boolean isPlaying() {
+        return currentPlayer != null && currentPlayer.isPlaying();
+    }
+
+    @Override
+    public void seekTo(int position) {
+        if (currentPlayer != null) {
+            currentPlayer.seekTo(position);
+        }
+    }
+
+    @Override
+    public int getDuration() {
+        if (currentPlayer != null) {
+            try {
+                return currentPlayer.getDuration();
+            } catch (Exception e) {
+                return 0;
+            }
+        }
+        return 0;
+    }
+
+    @Override
+    public int getCurrentPosition() {
+        if (currentPlayer != null) {
+            try {
+                return currentPlayer.getCurrentPosition();
+            } catch (Exception e) {
+                return 0;
+            }
+        }
+        return 0;
+    }
+
+    @Override
+    public void setSpeed(float speed) {
+        this.currentSpeed = speed;
+        if (playerA != null && playerA.isPlaying()) {
+            playerA.setPlaybackParams(playerA.getPlaybackParams().setSpeed(speed));
+        }
+        if (playerB != null && playerB.isPlaying()) {
+            playerB.setPlaybackParams(playerB.getPlaybackParams().setSpeed(speed));
+        }
+    }
+
     private void handleError(String message, Exception e) {
         Log.e(TAG, message, e);
         if (playbackListener != null) {
@@ -172,6 +230,7 @@ public class GoogleTranslateTTSClient {
         }
         stop();
     }
+
 
     private List<String> splitText(String text) {
         List<String> result = new ArrayList<>();
