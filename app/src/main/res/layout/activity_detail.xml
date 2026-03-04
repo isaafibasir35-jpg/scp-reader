@@ -10,6 +10,14 @@
         android:orientation="horizontal">
 
         <Button
+            android:id="@+id/btnBack"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Назад"
+            android:contentDescription="Вернуться назад" />
+
+        <Button
             android:id="@+id/btnDownload"
             android:layout_width="0dp"
             android:layout_height="wrap_content"

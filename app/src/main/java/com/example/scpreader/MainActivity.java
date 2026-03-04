@@ -2,15 +2,11 @@ package com.example.scpreader;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.os.Handler;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
-import android.webkit.ValueCallback;
-import android.webkit.WebView;
-import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.GridLayout;
@@ -47,7 +43,6 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
     private Map<String, List<SCPObject>> categoryData;
     private EditText searchField;
     private DatabaseHelper dbHelper;
-    private WebView hiddenWebView;
     private LinearLayout listLayout;
     private View categoriesLayout;
     private Toolbar toolbar;
@@ -55,21 +50,7 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
     private final String[] categories = {
             "Серия I", "Серия II", "Серия III", "Серия IV", "Серия V",
             "Серия VI", "Серия VII", "Серия VIII", "Серия IX", "Серия X",
-            "Филиал RU"
-    };
-
-    private final String[] categoryUrls = {
-            "https://scpfoundation.net/scp-series",
-            "https://scpfoundation.net/scp-series-2",
-            "https://scpfoundation.net/scp-series-3",
-            "https://scpfoundation.net/scp-series-4",
-            "https://scpfoundation.net/scp-series-5",
-            "https://scpfoundation.net/scp-series-6",
-            "https://scpfoundation.net/scp-series-7",
-            "https://scpfoundation.net/scp-series-8",
-            "https://scpfoundation.net/scp-series-9",
-            "https://scpfoundation.net/scp-series-10",
-            "https://scpfoundation.net/scp-list-ru"
+            "Русский филиал"
     };
 
     @Override
@@ -102,15 +83,6 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
         recyclerView.setAdapter(adapter);
 
         setupCategoryButtons();
-
-        hiddenWebView = findViewById(R.id.hidden_webview);
-        hiddenWebView.getSettings().setJavaScriptEnabled(true);
-        hiddenWebView.setWebViewClient(new WebViewClient() {
-            @Override
-            public void onPageFinished(WebView view, String url) {
-                new Handler().postDelayed(() -> parseScpList(), 4000);
-            }
-        });
 
         searchField.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -148,13 +120,7 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
             updateFavoritesInList(list);
             adapter.updateList(list);
         } else {
-            // Find URL
-            int index = -1;
-            for(int i=0; i<categories.length; i++) if(categories[i].equals(categoryName)) index = i;
-            if (index != -1) {
-                Toast.makeText(this, "Загрузка списка из сети...", Toast.LENGTH_SHORT).show();
-                hiddenWebView.loadUrl(categoryUrls[index]);
-            }
+            Toast.makeText(this, "Список пуст в JSON", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -277,28 +243,6 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
         }
     }
 
-    private void parseScpList() {
-        String js = "(function() { var res=[]; var seen={}; var lis=document.querySelectorAll('li'); for(var i=0;i<lis.length;i++){ var li=lis[i]; var aTags=li.querySelectorAll('a'); for(var j=0;j<aTags.length;j++){ var a=aTags[j]; var href=a.getAttribute('href')||''; var match=href.match(/\\/(scp-\\d+(?:-[a-z]+)*)/i); if(match){ var id=match[1].toUpperCase(); if(!seen[id]){ seen[id]=true; var title=li.textContent; title=title.replace(new RegExp(id, 'i'), '').replace(a.textContent, '').replace(/^[\\s\\-\\—\\–\\:\\[\\]]+/, '').replace(/\\n/g, ' ').replace(/\\s+/g, ' ').trim(); if(!title) title='Объект '+id; res.push(id+'|||'+title); } break; } } } return res.join('###'); })();";
-
-        hiddenWebView.evaluateJavascript(js, value -> {
-            if (value == null || value.equals("null") || value.isEmpty()) return;
-            String data = value;
-            if (data.startsWith("\"") && data.endsWith("\"")) data = data.substring(1, data.length() - 1);
-            data = data.replace("\\\\", "\\").replace("\\\"", "\"");
-            String[] items = data.split("###");
-            List<SCPObject> newList = new ArrayList<>();
-            for (String item : items) {
-                String[] parts = item.split("\\|\\|\\|");
-                if (parts.length >= 2) {
-                    newList.add(new SCPObject(parts[0].trim(), parts[1].trim()));
-                }
-            }
-            updateFavoritesInList(newList);
-            adapter.updateList(newList);
-            Toast.makeText(MainActivity.this, "Найдено: " + newList.size(), Toast.LENGTH_SHORT).show();
-        });
-    }
-
     @Override
     public void onItemClick(SCPObject scp) {
         openDetail(scp, false);
@@ -333,3 +277,4 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
         }
     }
 }
+

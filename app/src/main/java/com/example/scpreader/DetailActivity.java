@@ -30,6 +30,7 @@ public class DetailActivity extends AppCompatActivity {
     private ProgressBar progressBar;
     private Button btnDownload;
     private Button btnUpdate;
+    private Button btnBack;
     private SCPObject scp;
     private DatabaseHelper dbHelper;
 
@@ -43,6 +44,7 @@ public class DetailActivity extends AppCompatActivity {
         progressBar = findViewById(R.id.progressBar);
         btnDownload = findViewById(R.id.btnDownload);
         btnUpdate = findViewById(R.id.btnUpdate);
+        btnBack = findViewById(R.id.btnBack);
 
         Intent intent = getIntent();
         if (intent != null && intent.hasExtra("scp")) {
@@ -56,6 +58,10 @@ public class DetailActivity extends AppCompatActivity {
             if (savedInstanceState == null) {
                 loadArticle();
             }
+
+            btnBack.setOnClickListener(v -> {
+                onBackPressed();
+            });
 
             btnDownload.setOnClickListener(v -> {
                 saveOffline();
