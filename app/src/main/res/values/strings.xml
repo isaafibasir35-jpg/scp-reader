@@ -10,16 +10,4 @@
     <string name="error_loading">Ошибка загрузки. Проверьте интернет.</string>
     <string name="navigation_drawer_open">Открыть меню</string>
     <string name="navigation_drawer_close">Закрыть меню</string>
-    
-    <!-- TTS Player -->
-    <string name="player_title">Голосовой помощник</string>
-    <string name="tts_google">Google (Быстрый старт)</string>
-    <string name="tts_edge">Microsoft Edge (Светлана)</string>
-    <string name="pause">Пауза</string>
-    <string name="resume">Продолжить</string>
-    <string name="back_10_sec">-10 секунд</string>
-    <string name="forward_10_sec">+10 секунд</string>
-    <string name="speed_1_0">1.0x</string>
-    <string name="speed_1_2">1.2x</string>
-    <string name="speed_1_5">1.5x</string>
 </resources>
