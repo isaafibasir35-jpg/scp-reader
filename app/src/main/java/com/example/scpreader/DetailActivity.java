@@ -141,12 +141,12 @@ public class DetailActivity extends AppCompatActivity {
                         "var style = document.createElement('style'); " +
                         "style.innerHTML = 'html, body { background-color: #121212 !important; color: #E0E0E0 !important; } " +
                         "#header, #top-bar, nav, #side-bar, #login-status, #search-top-box, #navi-bar, #navi-bar-shadow, #breadcrumbs, " +
-                        ".page-rate-widget-box, .rate-box-with-margin, .rate-box-inline-with-margin, .credit-rate, .rate-box, " +
-                        ".wd-rate-widget, .credit-rating-box, .rate-box-with-margin, .rate-box-inline-with-margin, " +
-                        ".page-tags, #page-info-section, #page-info-break, #footer, #license-area, #page-options-bottom, " +
-                        "#page-options-container, #action-area, #discuss-button, .bottom-group, .license-area, " +
-                        ".printuser, #odialog-container, .wd-editor-mobile-indicator, #header-extra-div-1, #header-extra-div-2, " +
-                        "#header-extra-div-3, .error-block, #content-panel { display: none !important; } " +
+                        "[class*=\"rate\"], [id*=\"rate\"], .creditRate, .page-rate-widget-box, .rate-box-with-margin, .rate-box-inline-with-margin, .credit-rate, .rate-box, .wd-rate-widget, .credit-rating-box, " +
+                        "[class*=\"author\"], [class*=\"credit\"], .author-links-box, .author-info, " +
+                        "#page-info, .page-info, [class*=\"version\"], .page-version, " +
+                        ".buttons, .page-options-bottom, #page-options-container, #action-area, #discuss-button, " +
+                        ".page-tags, #page-info-section, #page-info-break, #footer, #license-area, .bottom-group, .license-area, " +
+                        ".printuser, #odialog-container, .wd-editor-mobile-indicator, #header-extra-div-1, #header-extra-div-2, #header-extra-div-3, .error-block, #content-panel { display: none !important; } " +
                         "#main-content { margin: 0 !important; padding: 15px !important; width: 100% !important; border: none !important; } " +
                         "#page-content { font-size: 1.1em !important; line-height: 1.6 !important; }'; " +
                         "document.head.appendChild(style); " +
