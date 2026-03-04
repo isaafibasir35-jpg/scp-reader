@@ -43,7 +43,7 @@ public class SCPAdapter extends RecyclerView.Adapter<SCPAdapter.ViewHolder> impl
         holder.titleText.setText(scp.getTitle());
         
         // Favorite icon
-        holder.btnFavorite.setImageResource(scp.isFavorite() ? android.R.drawable.btn_star_big_on : android.R.drawable.btn_star_big_off);
+        holder.btnFavorite.setImageResource(scp.isFavorite() ? android.R.drawable.star_big_on : android.R.drawable.star_big_off);
         
         // Доступность: Описание для скринридера
         holder.itemView.setContentDescription("Объект " + scp.getNumber() + ": " + scp.getTitle() + ". Нажмите для чтения статьи.");
@@ -52,7 +52,7 @@ public class SCPAdapter extends RecyclerView.Adapter<SCPAdapter.ViewHolder> impl
         holder.btnDownload.setOnClickListener(v -> listener.onDownloadClick(scp));
         holder.btnFavorite.setOnClickListener(v -> {
             scp.setFavorite(!scp.isFavorite());
-            holder.btnFavorite.setImageResource(scp.isFavorite() ? android.R.drawable.btn_star_big_on : android.R.drawable.btn_star_big_off);
+            holder.btnFavorite.setImageResource(scp.isFavorite() ? android.R.drawable.star_big_on : android.R.drawable.star_big_off);
             listener.onFavoriteClick(scp);
         });
     }

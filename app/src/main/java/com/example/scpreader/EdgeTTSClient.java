@@ -65,10 +65,10 @@ public class EdgeTTSClient {
                 @Override
                 public void onMessage(WebSocket webSocket, ByteString bytes) {
                     try {
-                        int headerLength = ((bytes.get(0) & 0xFF) << 8) | (bytes.get(1) & 0xFF);
+                        int headerLength = ((bytes.getByte(0) & 0xFF) << 8) | (bytes.getByte(1) & 0xFF);
                         String header = bytes.substring(2, headerLength + 2).utf8();
                         if (header.contains("Path:audio")) {
-                            byte[] audioData = bytes.substring(headerLength + 2).toByteArray();
+                            byte[] audioData = bytes.substring(headerLength + 2, bytes.size()).toByteArray();
                             if (fileOutputStream != null) {
                                 fileOutputStream.write(audioData);
                             }
