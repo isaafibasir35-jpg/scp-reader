@@ -10,6 +10,10 @@ import okhttp3.WebSocketListener;
 import okio.ByteString;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+import java.util.TimeZone;
 import java.util.UUID;
 
 public class EdgeTTSClient {
@@ -35,10 +39,19 @@ public class EdgeTTSClient {
         this.requestId = UUID.randomUUID().toString().replace("-", "");
     }
 
+    private String getTimestamp() {
+        SimpleDateFormat sdf = new SimpleDateFormat("EEE MMM dd yyyy HH:mm:ss 'GMT'Z (zzzz)", Locale.US);
+        sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+        return sdf.format(new Date());
+    }
+
     public void synthesize(String text) {
+        String url = WS_URL + "&ConnectionId=" + requestId;
         Request request = new Request.Builder()
-                .url(WS_URL)
-                .addHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0")
+                .url(url)
+                .addHeader("Pragma", "no-cache")
+                .addHeader("Cache-Control", "no-cache")
+                .addHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0")
                 .addHeader("Origin", "chrome-extension://jdmojkfianjmjbeueledgdicanmbbmbe")
                 .build();
 
@@ -62,58 +75,61 @@ public class EdgeTTSClient {
                 }
             }
 
-                @Override
-                public void onMessage(WebSocket webSocket, ByteString bytes) {
-                    try {
-                        int headerLength = ((bytes.getByte(0) & 0xFF) << 8) | (bytes.getByte(1) & 0xFF);
-                        String header = bytes.substring(2, headerLength + 2).utf8();
-                        if (header.contains("Path:audio")) {
-                            byte[] audioData = bytes.substring(headerLength + 2, bytes.size()).toByteArray();
-                            if (fileOutputStream != null) {
-                                fileOutputStream.write(audioData);
-                            }
+            @Override
+            public void onMessage(WebSocket webSocket, ByteString bytes) {
+                try {
+                    int headerLength = ((bytes.getByte(0) & 0xFF) << 8) | (bytes.getByte(1) & 0xFF);
+                    String header = bytes.substring(2, headerLength + 2).utf8();
+                    if (header.contains("Path:audio")) {
+                        byte[] audioData = bytes.substring(headerLength + 2, bytes.size()).toByteArray();
+                        if (fileOutputStream != null) {
+                            fileOutputStream.write(audioData);
                         }
-                    } catch (Exception e) {
-                        Log.e(TAG, "Error writing audio data", e);
                     }
+                } catch (Exception e) {
+                    Log.e(TAG, "Error writing audio data", e);
                 }
-            
-                @Override
-                public void onFailure(WebSocket webSocket, Throwable t, Response response) {
-                    cleanup();
-                    callback.onError(t.getMessage());
-                }
-            
-                @Override
-                public void onClosing(WebSocket webSocket, int code, String reason) {
-                    cleanup();
-                }
-            });
             }
             
-            private void sendConfig(WebSocket ws) {
-                String msg = "Content-Type:application/json; charset=utf-8\r\n" +
-                        "Path:speech.config\r\n\r\n" +
-                        "{\"context\":{\"synthesis\":{\"strategy\":\"uniform\",\"outputFormat\":\"audio-24khz-48kbitrate-mono-mp3\"}}}";
-                ws.send(msg);
+            @Override
+            public void onFailure(WebSocket webSocket, Throwable t, Response response) {
+                Log.e(TAG, "WebSocket Failure: " + (response != null ? response.message() : ""), t);
+                cleanup();
+                callback.onError(t.getMessage());
             }
             
-            private void sendSSML(WebSocket ws, String text) {
-                // Escape XML special characters
-                String escapedText = text.replace("&", "&amp;")
-                                         .replace("<", "&lt;")
-                                         .replace(">", "&gt;")
-                                         .replace("\"", "&quot;")
-                                         .replace("'", "&apos;");
+            @Override
+            public void onClosing(WebSocket webSocket, int code, String reason) {
+                cleanup();
+            }
+        });
+    }
+            
+    private void sendConfig(WebSocket ws) {
+        String msg = "X-Timestamp:" + getTimestamp() + "\r\n" +
+                "Content-Type:application/json; charset=utf-8\r\n" +
+                "Path:speech.config\r\n\r\n" +
+                "{\"context\":{\"synthesis\":{\"strategy\":\"uniform\",\"outputFormat\":\"audio-24khz-48kbitrate-mono-mp3\"}}}";
+        ws.send(msg);
+    }
+            
+    private void sendSSML(WebSocket ws, String text) {
+        // Escape XML special characters
+        String escapedText = text.replace("&", "&amp;")
+                                 .replace("<", "&lt;")
+                                 .replace(">", "&gt;")
+                                 .replace("\"", "&quot;")
+                                 .replace("'", "&apos;");
                                          
-                String ssml = "<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='ru-RU'>" +
-                        "<voice name='ru-RU-SvetlanaNeural'>" + escapedText + "</voice></speak>";
-                String msg = "X-RequestId:" + requestId + "\r\n" +
-                        "Content-Type:application/ssml+xml\r\n" +
-                        "Path:ssml\r\n\r\n" +
-                        ssml;
-                ws.send(msg);
-            }
+        String ssml = "<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='ru-RU'>" +
+                "<voice name='ru-RU-SvetlanaNeural'>" + escapedText + "</voice></speak>";
+        String msg = "X-RequestId:" + requestId + "\r\n" +
+                "X-Timestamp:" + getTimestamp() + "\r\n" +
+                "Content-Type:application/ssml+xml\r\n" +
+                "Path:ssml\r\n\r\n" +
+                ssml;
+        ws.send(msg);
+    }
 
     private void cleanup() {
         if (webSocket != null) {
