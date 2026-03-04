@@ -52,7 +52,8 @@ public class EdgeTTSClient {
                 .addHeader("Pragma", "no-cache")
                 .addHeader("Cache-Control", "no-cache")
                 .addHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0")
-                .addHeader("Origin", "chrome-extension://jdmojkfianjmjbeueledgdicanmbbmbe")
+                .addHeader("Origin", "https://speech.microsoft.com")
+                .addHeader("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7")
                 .build();
 
         webSocket = client.newWebSocket(request, new WebSocketListener() {
