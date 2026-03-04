@@ -20,6 +20,11 @@ import java.io.FileOutputStream;
 import java.io.InputStreamReader;
 import java.io.Serializable;
 
+import android.view.Menu;
+import android.view.MenuItem;
+import android.media.AudioAttributes;
+import android.media.MediaPlayer;
+
 public class DetailActivity extends AppCompatActivity {
     private WebView webView;
     private RelativeLayout loadingOverlay;
@@ -28,6 +33,11 @@ public class DetailActivity extends AppCompatActivity {
     private Button btnBack;
     private SCPObject scp;
     private DatabaseHelper dbHelper;
+    
+    private EdgeTTSClient ttsClient;
+    private MediaPlayer mediaPlayer;
+    private boolean isSpeaking = false;
+    private String tempAudioPath;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,6 +51,8 @@ public class DetailActivity extends AppCompatActivity {
         btnUpdate = findViewById(R.id.btnUpdate);
         btnBack = findViewById(R.id.btnBack);
 
+        tempAudioPath = new File(getCacheDir(), "tts_audio.mp3").getAbsolutePath();
+        
         Intent intent = getIntent();
         if (intent != null && intent.hasExtra("scp")) {
             scp = (SCPObject) intent.getSerializableExtra("scp");
@@ -49,6 +61,12 @@ public class DetailActivity extends AppCompatActivity {
         if (scp == null) {
             finish();
             return;
+        }
+
+        androidx.appcompat.widget.Toolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setTitle(scp.getNumber());
         }
 
         setTitle(scp.getNumber());
@@ -95,6 +113,81 @@ public class DetailActivity extends AppCompatActivity {
         webView.evaluateJavascript("javascript:window.HTMLOUT.save('<html>'+document.getElementsByTagName('html')[0].innerHTML+'</html>');", null);
     }
 
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_detail, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        MenuItem ttsItem = menu.findItem(R.id.action_tts);
+        if (ttsItem != null) {
+            ttsItem.setIcon(isSpeaking ? R.drawable.ic_stop : R.drawable.ic_play_arrow);
+            ttsItem.setTitle(isSpeaking ? "Остановить" : "Озвучить");
+        }
+        return super.onPrepareOptionsMenu(menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == R.id.action_tts) {
+            if (isSpeaking) {
+                stopTTS();
+            } else {
+                startTTS();
+            }
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    private void startTTS() {
+        // Вызываем JS для получения текста
+        webView.evaluateJavascript("javascript:window.TEXTOUT.extract(document.body.innerText);", null);
+    }
+
+    private void stopTTS() {
+        isSpeaking = false;
+        invalidateOptionsMenu();
+        if (ttsClient != null) {
+            ttsClient.stop();
+        }
+        if (mediaPlayer != null) {
+            if (mediaPlayer.isPlaying()) {
+                mediaPlayer.stop();
+            }
+            mediaPlayer.release();
+            mediaPlayer = null;
+        }
+    }
+
+    private void playAudio(String path) {
+        runOnUiThread(() -> {
+            try {
+                if (mediaPlayer != null) {
+                    mediaPlayer.release();
+                }
+                mediaPlayer = new MediaPlayer();
+                mediaPlayer.setAudioAttributes(new AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                        .build());
+                mediaPlayer.setDataSource(path);
+                mediaPlayer.setOnPreparedListener(mp -> mp.start());
+                mediaPlayer.setOnCompletionListener(mp -> {
+                    isSpeaking = false;
+                    invalidateOptionsMenu();
+                });
+                mediaPlayer.prepareAsync();
+            } catch (Exception e) {
+                Toast.makeText(this, "Ошибка воспроизведения: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                isSpeaking = false;
+                invalidateOptionsMenu();
+            }
+        });
+    }
+
     private void setupWebView() {
         webView.setBackgroundColor(android.graphics.Color.parseColor("#121212"));
         WebSettings settings = webView.getSettings();
@@ -123,6 +216,42 @@ public class DetailActivity extends AppCompatActivity {
                 } catch(Exception e){}
             }
         }, "HTMLOUT");
+
+        webView.addJavascriptInterface(new Object() {
+            @JavascriptInterface
+            public void extract(String text) {
+                if (text == null || text.trim().isEmpty()) {
+                    runOnUiThread(() -> Toast.makeText(DetailActivity.this, "Текст не найден", Toast.LENGTH_SHORT).show());
+                    return;
+                }
+                
+                // Очистка текста: убираем лишние пробелы и пустые строки
+                String cleanText = text.replaceAll("\\s+", " ").trim();
+                
+                runOnUiThread(() -> {
+                    isSpeaking = true;
+                    invalidateOptionsMenu();
+                    Toast.makeText(DetailActivity.this, "Генерация озвучки...", Toast.LENGTH_SHORT).show();
+                });
+                
+                ttsClient = new EdgeTTSClient(tempAudioPath, new EdgeTTSClient.TTSCallback() {
+                    @Override
+                    public void onFinish() {
+                        playAudio(tempAudioPath);
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        runOnUiThread(() -> {
+                            isSpeaking = false;
+                            invalidateOptionsMenu();
+                            Toast.makeText(DetailActivity.this, "Ошибка TTS: " + error, Toast.LENGTH_SHORT).show();
+                        });
+                    }
+                });
+                ttsClient.synthesize(cleanText);
+            }
+        }, "TEXTOUT");
 
         // Настройки кэширования для офлайн-режима
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
@@ -192,6 +321,7 @@ public class DetailActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        stopTTS();
         if (webView != null) {
             webView.destroy();
         }
