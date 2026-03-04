@@ -50,7 +50,7 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
     private final String[] categories = {
             "Серия I", "Серия II", "Серия III", "Серия IV", "Серия V",
             "Серия VI", "Серия VII", "Серия VIII", "Серия IX", "Серия X",
-            "Русский филиал"
+            "Филиал RU"
     };
 
     @Override

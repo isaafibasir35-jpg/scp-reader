@@ -1,9 +1,5 @@
 package com.example.scpreader;
 
-import android.content.ContentValues;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
-import android.database.sqlite.SQLiteOpenHelper;
 import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.view.View;
@@ -13,7 +9,6 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.RelativeLayout;
-import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import android.content.Intent;
 import android.widget.Button;
@@ -22,7 +17,6 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.InputStreamReader;
 import java.io.Serializable;
 
@@ -52,17 +46,21 @@ public class DetailActivity extends AppCompatActivity {
             scp = (SCPObject) intent.getSerializableExtra("scp");
         }
         
-        if (scp != null) {
-            setTitle(scp.getNumber());
-            setupWebView();
-            
-            if (savedInstanceState == null) {
-                loadArticle();
-            }
+        if (scp == null) {
+            finish();
+            return;
+        }
 
-            btnBack.setOnClickListener(v -> {
-                onBackPressed();
-            });
+        setTitle(scp.getNumber());
+        setupWebView();
+            
+        if (savedInstanceState == null) {
+            loadArticle();
+        }
+
+        btnBack.setOnClickListener(v -> {
+            onBackPressed();
+        });
 
             btnDownload.setOnClickListener(v -> {
                 saveOffline();
@@ -91,7 +89,6 @@ public class DetailActivity extends AppCompatActivity {
             if (intent.getBooleanExtra("auto_download", false)) {
                 // Будет вызвано после загрузки страницы в onPageFinished для надежности
             }
-        }
     }
 
     private void saveOffline() {
@@ -122,7 +119,7 @@ public class DetailActivity extends AppCompatActivity {
                     if (scp != null) {
                         dbHelper.addOrUpdateSCP(scp);
                     }
-                    runOnUiThread(() -> Toast.makeText(DetailActivity.this, "Статья сохранена", Toast.makeText.LENGTH_SHORT).show());
+                    runOnUiThread(() -> Toast.makeText(DetailActivity.this, "Статья сохранена", Toast.LENGTH_SHORT).show());
                 } catch(Exception e){}
             }
         }, "HTMLOUT");
