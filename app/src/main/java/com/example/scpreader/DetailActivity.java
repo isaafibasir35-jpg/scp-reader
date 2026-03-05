@@ -138,6 +138,7 @@ public class DetailActivity extends AppCompatActivity {
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
                 super.onPageStarted(view, url, favicon);
                 loadingOverlay.setVisibility(View.VISIBLE);
+                webView.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
             }
 
             @Override
@@ -159,7 +160,10 @@ public class DetailActivity extends AppCompatActivity {
                         "return true; " +
                         "})()";
                 view.evaluateJavascript(js, value -> {
-                    loadingOverlay.postDelayed(() -> loadingOverlay.setVisibility(View.GONE), 150);
+                    loadingOverlay.postDelayed(() -> {
+                        loadingOverlay.setVisibility(View.GONE);
+                        webView.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_AUTO);
+                    }, 150);
                 });
             }
         });
