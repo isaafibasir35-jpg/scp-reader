@@ -7,10 +7,13 @@ import android.text.TextWatcher;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.GridLayout;
 import android.widget.LinearLayout;
+import android.widget.Spinner;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBarDrawerToggle;
@@ -34,6 +37,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 
 public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItemClickListener, NavigationView.OnNavigationItemSelectedListener {
     private DrawerLayout drawerLayout;
@@ -41,7 +45,10 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
     private RecyclerView recyclerView;
     private SCPAdapter adapter;
     private Map<String, List<SCPObject>> categoryData;
+    private List<SCPObject> allSCPs = new ArrayList<>();
+    private List<SCPObject> currentBaseList = new ArrayList<>();
     private EditText searchField;
+    private Spinner filterSpinner;
     private DatabaseHelper dbHelper;
     private LinearLayout listLayout;
     private View categoriesLayout;
@@ -75,6 +82,7 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
 
         recyclerView = findViewById(R.id.scpList);
         searchField = findViewById(R.id.searchField);
+        filterSpinner = findViewById(R.id.filterSpinner);
         listLayout = findViewById(R.id.list_layout);
         categoriesLayout = findViewById(R.id.categories_layout);
 
@@ -83,14 +91,83 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
         recyclerView.setAdapter(adapter);
 
         setupCategoryButtons();
+        setupFilterSpinner();
 
         searchField.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
-                adapter.getFilter().filter(s);
+                applyFilters();
             }
             @Override public void afterTextChanged(Editable s) {}
         });
+    }
+
+    private void setupFilterSpinner() {
+        String[] options = {"Все", "Прочитанные", "Непрочитанные"};
+        ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, options);
+        spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        filterSpinner.setAdapter(spinnerAdapter);
+        filterSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                applyFilters();
+            }
+            @Override public void onNothingSelected(AdapterView<?> parent) {}
+        });
+    }
+
+    private void applyFilters() {
+        String query = searchField.getText().toString().toLowerCase().trim();
+        int filterPos = filterSpinner.getSelectedItemPosition(); // 0: Все, 1: Прочитанные, 2: Непрочитанные
+
+        if (!query.isEmpty() && categoriesLayout.getVisibility() == View.VISIBLE) {
+            categoriesLayout.setVisibility(View.GONE);
+            listLayout.setVisibility(View.VISIBLE);
+            toolbar.setTitle("Результаты поиска");
+        } else if (query.isEmpty() && "Результаты поиска".equals(toolbar.getTitle())) {
+            showCategories();
+        }
+
+        List<SCPObject> baseList;
+        if (!query.isEmpty()) {
+            // Если есть поиск, ищем во всех категориях
+            baseList = allSCPs;
+        } else {
+            // Если поиска нет, используем текущий список (категория, избранное и т.д.)
+            baseList = currentBaseList;
+        }
+
+        Set<String> favorites = dbHelper.getAllFavoritesNumbers();
+        Set<String> reads = dbHelper.getAllReadNumbers();
+
+        List<SCPObject> filteredList = new ArrayList<>();
+        for (SCPObject scp : baseList) {
+            boolean isFavorite = favorites.contains(scp.getNumber());
+            boolean isRead = reads.contains(scp.getNumber());
+            
+            scp.setFavorite(isFavorite);
+            scp.setRead(isRead);
+
+            // Text search
+            boolean matchesQuery = query.isEmpty() || 
+                    scp.getNumber().toLowerCase().contains(query) || 
+                    scp.getTitle().toLowerCase().contains(query);
+
+            if (!matchesQuery) continue;
+
+            // Read/Unread filter
+            boolean matchesFilter = true;
+            if (filterPos == 1) { // Прочитанные
+                matchesFilter = isRead;
+            } else if (filterPos == 2) { // Непрочитанные
+                matchesFilter = !isRead;
+            }
+
+            if (matchesFilter) {
+                filteredList.add(scp);
+            }
+        }
+        adapter.updateList(filteredList);
     }
 
     private void setupCategoryButtons() {
@@ -114,24 +191,27 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
         toolbar.setTitle(categoryName);
         categoriesLayout.setVisibility(View.GONE);
         listLayout.setVisibility(View.VISIBLE);
+        searchField.setText("");
 
         List<SCPObject> list = categoryData.get(categoryName);
         if (list != null && !list.isEmpty()) {
-            updateFavoritesInList(list);
-            adapter.updateList(list);
+            currentBaseList = list;
+            applyFilters();
         } else {
             Toast.makeText(this, "Список пуст в JSON", Toast.LENGTH_SHORT).show();
         }
     }
 
-    private void updateFavoritesInList(List<SCPObject> list) {
+    private void updateStatusesInList(List<SCPObject> list) {
         for (SCPObject scp : list) {
             scp.setFavorite(dbHelper.isFavorite(scp.getNumber()));
+            scp.setRead(dbHelper.isRead(scp.getNumber()));
         }
     }
 
     private void loadJsonData() {
         categoryData = new HashMap<>();
+        allSCPs = new ArrayList<>();
         try {
             InputStream is = getAssets().open("database.json");
             BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
@@ -152,7 +232,9 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
                         String item = array.getString(i);
                         String[] parts = item.split("\\|\\|\\|");
                         if (parts.length >= 2) {
-                            list.add(new SCPObject(parts[0].trim(), parts[1].trim()));
+                            SCPObject scp = new SCPObject(parts[0].trim(), parts[1].trim());
+                            list.add(scp);
+                            allSCPs.add(scp);
                         }
                     }
                     categoryData.put(category, list);
@@ -184,20 +266,23 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
         toolbar.setTitle(R.string.app_name);
         categoriesLayout.setVisibility(View.VISIBLE);
         listLayout.setVisibility(View.GONE);
+        searchField.setText("");
     }
 
     private void showFavorites() {
         toolbar.setTitle("Избранное");
         categoriesLayout.setVisibility(View.GONE);
         listLayout.setVisibility(View.VISIBLE);
-        List<SCPObject> favorites = dbHelper.getFavorites();
-        adapter.updateList(favorites);
+        searchField.setText("");
+        currentBaseList = dbHelper.getFavorites();
+        applyFilters();
     }
 
     private void showSaved() {
         toolbar.setTitle("Сохраненные");
         categoriesLayout.setVisibility(View.GONE);
         listLayout.setVisibility(View.VISIBLE);
+        searchField.setText("");
         
         List<SCPObject> savedList = new ArrayList<>();
         File dir = getFilesDir();
@@ -209,12 +294,12 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
                 if (scp == null) {
                     String title = findTitle(number);
                     scp = new SCPObject(number, title);
-                    scp.setFavorite(dbHelper.isFavorite(number));
                 }
                 savedList.add(scp);
             }
         }
-        adapter.updateList(savedList);
+        currentBaseList = savedList;
+        applyFilters();
     }
 
     private String findTitle(String number) {

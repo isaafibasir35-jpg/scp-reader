@@ -8,6 +8,7 @@ public class SCPObject implements Serializable {
     private String title;
     private String content;
     private boolean isFavorite;
+    private boolean isRead;
 
     public SCPObject(String number, String title) {
         this.number = number;
@@ -28,4 +29,6 @@ public class SCPObject implements Serializable {
     public void setTitle(String title) { this.title = title; }
     public boolean isFavorite() { return isFavorite; }
     public void setFavorite(boolean favorite) { isFavorite = favorite; }
+    public boolean isRead() { return isRead; }
+    public void setRead(boolean read) { isRead = read; }
 }

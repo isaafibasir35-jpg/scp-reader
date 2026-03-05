@@ -62,6 +62,7 @@ public class DetailActivity extends AppCompatActivity {
             
         if (savedInstanceState == null) {
             loadArticle();
+            dbHelper.setRead(scp.getNumber(), scp.getTitle(), true);
         }
 
         btnBack.setOnClickListener(v -> {
