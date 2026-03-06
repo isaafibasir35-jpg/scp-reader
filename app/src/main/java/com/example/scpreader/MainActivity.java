@@ -205,7 +205,7 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
 
             itemLayout.addView(icon);
             itemLayout.addView(text);
-            itemLayout.setContentDescription("Категория: " + category);
+            itemLayout.setContentDescription(category);
 
             itemLayout.setOnClickListener(v -> loadCategory(category));
             grid.addView(itemLayout);
@@ -261,6 +261,7 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
                     currentBaseList = categoryData.get(branchArray[which]);
                     applyFilters();
                 })
+                .setNegativeButton(R.string.cancel_button, (dialog, which) -> dialog.dismiss())
                 .show();
     }
 

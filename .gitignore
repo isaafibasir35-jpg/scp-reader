@@ -1,0 +1,19 @@
+# Gradle files
+.gradle/
+build/
+
+# Android Studio / IntelliJ files
+.idea/
+*.iml
+local.properties
+.cxx/
+captures/
+
+# Root level garbage (identified during cleanup)
+database.json
+gradlew.bat
+extract_es.py
+
+# OS generated files
+.DS_Store
+Thumbs.db
