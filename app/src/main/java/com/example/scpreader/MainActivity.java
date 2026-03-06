@@ -57,7 +57,8 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
     private final String[] categories = {
             "Серия I", "Серия II", "Серия III", "Серия IV", "Серия V",
             "Серия VI", "Серия VII", "Серия VIII", "Серия IX", "Серия X",
-            "Русский филиал"
+            "Шуточные объекты", "Обоснованные объекты",
+            "Русский филиал", "Другие филиалы"
     };
 
     @Override
@@ -188,6 +189,10 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
     }
 
     private void loadCategory(String categoryName) {
+        if (categoryName.equals("Другие филиалы")) {
+            showOtherBranches();
+            return;
+        }
         toolbar.setTitle(categoryName);
         categoriesLayout.setVisibility(View.GONE);
         listLayout.setVisibility(View.VISIBLE);
@@ -200,6 +205,39 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
         } else {
             Toast.makeText(this, "Список пуст в JSON", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private void showOtherBranches() {
+        List<String> otherBranches = new ArrayList<>();
+        java.util.Set<String> mainCategories = new java.util.HashSet<>(java.util.Arrays.asList(categories));
+        for (String key : categoryData.keySet()) {
+            if (!mainCategories.contains(key)) {
+                otherBranches.add(key);
+            }
+        }
+
+        if (otherBranches.isEmpty()) {
+            Toast.makeText(this, "Нет других филиалов", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (otherBranches.size() == 1) {
+            loadCategory(otherBranches.get(0));
+            return;
+        }
+
+        String[] branchArray = otherBranches.toArray(new String[0]);
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Выберите филиал")
+                .setItems(branchArray, (dialog, which) -> {
+                    toolbar.setTitle(branchArray[which]);
+                    categoriesLayout.setVisibility(View.GONE);
+                    listLayout.setVisibility(View.VISIBLE);
+                    searchField.setText("");
+                    currentBaseList = categoryData.get(branchArray[which]);
+                    applyFilters();
+                })
+                .show();
     }
 
     private void updateStatusesInList(List<SCPObject> list) {
@@ -224,21 +262,21 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
             String json = sb.toString();
             JSONObject obj = new JSONObject(json);
 
-            for (String category : categories) {
-                if (obj.has(category)) {
-                    List<SCPObject> list = new ArrayList<>();
-                    JSONArray array = obj.getJSONArray(category);
-                    for (int i = 0; i < array.length(); i++) {
-                        String item = array.getString(i);
-                        String[] parts = item.split("\\|\\|\\|");
-                        if (parts.length >= 2) {
-                            SCPObject scp = new SCPObject(parts[0].trim(), parts[1].trim());
-                            list.add(scp);
-                            allSCPs.add(scp);
-                        }
+            java.util.Iterator<String> keys = obj.keys();
+            while (keys.hasNext()) {
+                String category = keys.next();
+                List<SCPObject> list = new ArrayList<>();
+                JSONArray array = obj.getJSONArray(category);
+                for (int i = 0; i < array.length(); i++) {
+                    String item = array.getString(i);
+                    String[] parts = item.split("\\|\\|\\|");
+                    if (parts.length >= 2) {
+                        SCPObject scp = new SCPObject(parts[0].trim(), parts[1].trim());
+                        list.add(scp);
+                        allSCPs.add(scp);
                     }
-                    categoryData.put(category, list);
                 }
+                categoryData.put(category, list);
             }
         } catch (Exception e) {
             e.printStackTrace();
