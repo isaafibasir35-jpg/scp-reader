@@ -11,7 +11,8 @@ import android.webkit.WebViewClient;
 import android.widget.RelativeLayout;
 import androidx.appcompat.app.AppCompatActivity;
 import android.content.Intent;
-import android.widget.Button;
+import android.widget.ImageButton;
+import android.widget.TextView;
 import android.widget.Toast;
 import java.io.BufferedReader;
 import java.io.File;
@@ -23,9 +24,9 @@ import java.io.Serializable;
 public class DetailActivity extends AppCompatActivity {
     private WebView webView;
     private RelativeLayout loadingOverlay;
-    private Button btnDownload;
-    private Button btnUpdate;
-    private Button btnBack;
+    private ImageButton btnDownload;
+    private ImageButton btnBack;
+    private TextView toolbarTitle;
     private SCPObject scp;
     private DatabaseHelper dbHelper;
 
@@ -38,8 +39,8 @@ public class DetailActivity extends AppCompatActivity {
         webView = findViewById(R.id.webview);
         loadingOverlay = findViewById(R.id.loadingOverlay);
         btnDownload = findViewById(R.id.btnDownload);
-        btnUpdate = findViewById(R.id.btnUpdate);
         btnBack = findViewById(R.id.btnBack);
+        toolbarTitle = findViewById(R.id.toolbar_title);
 
         Intent intent = getIntent();
         if (intent != null && intent.hasExtra("scp")) {
@@ -51,13 +52,7 @@ public class DetailActivity extends AppCompatActivity {
             return;
         }
 
-        androidx.appcompat.widget.Toolbar toolbar = findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
-        if (getSupportActionBar() != null) {
-            getSupportActionBar().setTitle(scp.getNumber());
-        }
-
-        setTitle(scp.getNumber());
+        toolbarTitle.setText(scp.getNumber());
         setupWebView();
             
         if (savedInstanceState == null) {
@@ -66,19 +61,14 @@ public class DetailActivity extends AppCompatActivity {
         }
 
         btnBack.setOnClickListener(v -> {
-            onBackPressed();
+            finish();
         });
 
-            btnDownload.setOnClickListener(v -> {
-                saveOffline();
-            });
+        btnDownload.setOnClickListener(v -> {
+            saveOffline();
+        });
 
-            btnUpdate.setOnClickListener(v -> {
-                loadingOverlay.setVisibility(View.VISIBLE);
-                webView.reload();
-            });
-
-            btnDownload.setOnLongClickListener(v -> {
+        btnDownload.setOnLongClickListener(v -> {
                 File file = new File(getFilesDir(), scp.getNumber() + ".html");
                 if (file.exists()) {
                     if (file.delete()) {

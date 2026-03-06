@@ -3,7 +3,8 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/drawer_layout"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="@color/backgroundDark">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -14,18 +15,19 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            android:background="?attr/colorPrimary"
+            android:background="@color/colorPrimary"
             android:elevation="4dp"
-            android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
-            app:popupTheme="@style/ThemeOverlay.AppCompat.Light" />
+            app:titleTextColor="@color/textPrimary"
+            app:popupTheme="@style/ThemeOverlay.AppCompat.Dark" />
 
         <LinearLayout
             android:id="@+id/search_container"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:padding="8dp"
-            android:background="?attr/colorPrimary">
+            android:padding="12dp"
+            android:background="@color/surfaceDark"
+            android:elevation="2dp">
 
             <EditText
                 android:id="@+id/searchField"
@@ -34,14 +36,20 @@
                 android:layout_weight="1"
                 android:hint="@string/search_hint"
                 android:inputType="text"
-                android:textColor="@android:color/white"
-                android:textColorHint="#CCCCCC" />
+                android:textColor="@color/textPrimary"
+                android:textColorHint="@color/textSecondary"
+                android:background="@android:color/transparent"
+                android:padding="8dp"
+                android:drawableStart="@android:drawable/ic_menu_search"
+                android:drawablePadding="8dp" />
 
             <Spinner
                 android:id="@+id/filterSpinner"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center_vertical" />
+                android:layout_gravity="center_vertical"
+                android:layout_marginStart="16dp"
+                android:backgroundTint="@color/textPrimary" />
         </LinearLayout>
 
         <FrameLayout
@@ -54,7 +62,7 @@
                 android:id="@+id/categories_layout"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:padding="16dp">
+                android:padding="12dp">
 
                 <GridLayout
                     android:id="@+id/categories_grid"
@@ -72,13 +80,13 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:orientation="vertical"
-                android:visibility="gone"
-                android:padding="8dp">
+                android:visibility="gone">
 
                 <androidx.recyclerview.widget.RecyclerView
                     android:id="@+id/scpList"
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent" />
+                    android:layout_height="match_parent"
+                    android:padding="4dp" />
 
             </LinearLayout>
 
@@ -97,6 +105,10 @@
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
         android:layout_gravity="start"
+        android:background="@color/surfaceDark"
+        app:itemIconTint="@color/textSecondary"
+        app:itemTextColor="@color/textPrimary"
+        app:headerLayout="@null"
         app:menu="@menu/nav_menu" />
 
 </androidx.drawerlayout.widget.DrawerLayout>

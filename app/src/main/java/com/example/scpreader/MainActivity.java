@@ -175,16 +175,40 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
         GridLayout grid = findViewById(R.id.categories_grid);
         grid.removeAllViews();
         for (String category : categories) {
-            Button btn = new Button(this);
-            btn.setText(category);
+            LinearLayout itemLayout = new LinearLayout(this);
+            itemLayout.setOrientation(LinearLayout.VERTICAL);
+            itemLayout.setGravity(android.view.Gravity.CENTER);
+            itemLayout.setPadding(16, 16, 16, 16);
+            itemLayout.setFocusable(true);
+            itemLayout.setClickable(true);
+            itemLayout.setBackgroundResource(R.drawable.ripple_effect); // We'll create this or use standard
+
             GridLayout.LayoutParams params = new GridLayout.LayoutParams();
             params.width = 0;
             params.height = GridLayout.LayoutParams.WRAP_CONTENT;
             params.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f);
-            params.setMargins(8, 8, 8, 8);
-            btn.setLayoutParams(params);
-            btn.setOnClickListener(v -> loadCategory(category));
-            grid.addView(btn);
+            params.setMargins(12, 12, 12, 12);
+            itemLayout.setLayoutParams(params);
+
+            android.widget.ImageView icon = new android.widget.ImageView(this);
+            icon.setLayoutParams(new LinearLayout.LayoutParams(96, 96));
+            icon.setImageResource(android.R.drawable.ic_menu_agenda);
+            icon.setColorFilter(getResources().getColor(R.color.colorAccent));
+            
+            android.widget.TextView text = new android.widget.TextView(this);
+            text.setText(category);
+            text.setGravity(android.view.Gravity.CENTER);
+            text.setTextColor(getResources().getColor(R.color.textPrimary));
+            text.setTextSize(14);
+            text.setLines(2);
+            text.setEllipsize(android.text.TextUtils.TruncateAt.END);
+
+            itemLayout.addView(icon);
+            itemLayout.addView(text);
+            itemLayout.setContentDescription("Категория: " + category);
+
+            itemLayout.setOnClickListener(v -> loadCategory(category));
+            grid.addView(itemLayout);
         }
     }
 

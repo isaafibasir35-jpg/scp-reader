@@ -3,48 +3,55 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#121212"
+    android:background="@color/backgroundDark"
     android:orientation="vertical">
 
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="#121212"
-        app:titleTextColor="#E0E0E0"
-        app:popupTheme="@style/Theme.MaterialComponents.Light" />
+        android:background="@color/colorPrimary"
+        app:titleTextColor="@color/textPrimary"
+        app:popupTheme="@style/ThemeOverlay.AppCompat.Dark">
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="#121212"
-        android:orientation="horizontal">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
 
-        <Button
-            android:id="@+id/btnBack"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Назад"
-            android:contentDescription="Вернуться назад" />
+            <ImageButton
+                android:id="@+id/btnBack"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@android:drawable/ic_menu_revert"
+                android:contentDescription="Вернуться назад"
+                android:tint="@color/textPrimary" />
 
-        <Button
-            android:id="@+id/btnDownload"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Скачать"
-            android:contentDescription="Скачать статью для офлайн чтения" />
+            <TextView
+                android:id="@+id/toolbar_title"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="SCP-Объект"
+                android:textColor="@color/textPrimary"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:maxLines="1"
+                android:ellipsize="end" />
 
-        <Button
-            android:id="@+id/btnUpdate"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Обновить"
-            android:contentDescription="Обновить страницу" />
-
-    </LinearLayout>
+            <ImageButton
+                android:id="@+id/btnDownload"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@android:drawable/stat_sys_download"
+                android:contentDescription="Скачать статью для офлайн чтения"
+                android:tint="@color/textPrimary" />
+        </LinearLayout>
+    </androidx.appcompat.widget.Toolbar>
 
     <RelativeLayout
         android:layout_width="match_parent"
@@ -54,14 +61,14 @@
             android:id="@+id/webview"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="#121212"
+            android:background="@color/backgroundDark"
             android:importantForAccessibility="noHideDescendants" />
 
         <RelativeLayout
             android:id="@+id/loadingOverlay"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="#121212"
+            android:background="@color/backgroundDark"
             android:clickable="true"
             android:focusable="true"
             android:importantForAccessibility="yes"
@@ -84,7 +91,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
                     android:text="Загрузка статьи..."
-                    android:textColor="#E0E0E0" />
+                    android:textColor="@color/textPrimary" />
             </LinearLayout>
         </RelativeLayout>
 

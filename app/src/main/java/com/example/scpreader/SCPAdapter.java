@@ -44,9 +44,10 @@ public class SCPAdapter extends RecyclerView.Adapter<SCPAdapter.ViewHolder> impl
         
         // Favorite icon
         holder.btnFavorite.setImageResource(scp.isFavorite() ? android.R.drawable.star_big_on : android.R.drawable.star_big_off);
+        holder.btnFavorite.setColorFilter(holder.itemView.getContext().getResources().getColor(scp.isFavorite() ? R.color.colorAccent : R.color.textSecondary));
         
         // Visual indicator for read status
-        holder.itemView.setAlpha(scp.isRead() ? 0.5f : 1.0f);
+        holder.itemView.setAlpha(scp.isRead() ? 0.4f : 1.0f);
         
         // Доступность: Описание для скринридера
         String status = scp.isRead() ? "Прочитано. " : "";
