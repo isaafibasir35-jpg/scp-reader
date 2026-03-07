@@ -89,20 +89,37 @@ public class DetailActivity extends AppCompatActivity {
 
     private String getUrlForSCP(SCPObject scp) {
         String rawNumber = scp.getNumber().toLowerCase().trim();
-        String urlPart;
         
+        // Особые случаи из вашего списка
+        if (rawNumber.contains("daveyoufool")) return "https://scpfoundation.net/daveyoufool-proposal";
+        if (rawNumber.contains("директор болд-j")) return "https://scpfoundation.net/director-bold-s-proposal-j";
+        if (rawNumber.contains("доктор паланез")) return "https://scpfoundation.net/weryllium-proposal";
+        if (rawNumber.contains("общее предложение")) return "https://scpfoundation.net/everyone-s-proposal";
+        if (rawNumber.contains("очередное предложение djkaktus")) return "https://scpfoundation.net/djkaktus-s-proposal-j";
+        if (rawNumber.equals("scp-(-1)-j")) return "https://scpfoundation.net/scp-minus-1-j";
+        if (rawNumber.equals("scp-:3-j")) return "https://scpfoundation.net/scp-003-j";
+        if (rawNumber.equals("scp-006-ня-ex")) return "https://scpfoundation.net/scp-006-cu-ex";
+        if (rawNumber.equals("scp-3jio-j")) return "https://scpfoundation.net/scp-3v1l-j";
+        if (rawNumber.equals("scp-666½-j")) return "https://scpfoundation.net/scp-666-and-a-half-j";
+        if (rawNumber.equals("scp-682-ня")) return "https://scpfoundation.net/scp-682-cu";
+        if (rawNumber.equals("scp-____-j")) return "https://scpfoundation.net/scp-j";
+        if (rawNumber.equals("scp-????-j")) return "https://scpfoundation.net/scp-in-a-box-j";
+        if (rawNumber.equals("scp-варуйубевай-j")) return "https://scpfoundation.net/scp-damej-j";
+        if (rawNumber.equals("scp-жутко-j")) return "https://scpfoundation.net/scp-spooky-j";
+        if (rawNumber.equals("scp-тчту-j")) return "https://scpfoundation.net/scp-ttku-j";
+        if (rawNumber.equals("scp-мяу-j")) return "https://scpfoundation.net/scp-meow-j";
+        if (rawNumber.equals("scp-загадка-j")) return "https://scpfoundation.net/scp-mystery-j";
+        if (rawNumber.equals("scp-wtf-j")) return "https://scpfoundation.net/scp-wtf-j#footnoteref-8";
+        if (rawNumber.contains("\\̅") || rawNumber.contains("botnik")) return "https://scpfoundation.net/scp-botnik-j";
+        if (rawNumber.equals("сцааааааааааааааааааааа-jp-j")) return "https://scpfoundation.net/scpaaaaaaaaaaaaaaaaaa-jp-j";
+
+        String urlPart;
         if (rawNumber.startsWith("scp-")) {
             urlPart = rawNumber;
         } else if (rawNumber.startsWith("spc-") || rawNumber.startsWith("skp-")) {
             urlPart = rawNumber;
         } else if (rawNumber.contains("кодовое имя:")) {
             urlPart = rawNumber.replace("кодовое имя:", "").trim().replace(" ", "-").replace("/", "-");
-            // Особая логика для предложений, которые мы знаем
-            if (urlPart.equals("daveyoufool")) {
-                urlPart = "daveyoufool-s-proposal-j";
-            } else if (urlPart.equals("директор-болд-j")) {
-                urlPart = "director-bold-j-proposal";
-            }
         } else if (rawNumber.startsWith("файл №")) {
             urlPart = rawNumber.replace("файл №", "").trim().toLowerCase();
             if (urlPart.startsWith("cn-")) {

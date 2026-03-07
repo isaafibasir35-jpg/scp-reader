@@ -70,6 +70,8 @@ public class MainActivity extends AppCompatActivity implements SCPAdapter.OnItem
         setSupportActionBar(toolbar);
 
         dbHelper = new DatabaseHelper(this);
+        dbHelper.deleteSCP("SCP-100-TH");
+        dbHelper.deleteSCP("SCP-106-TH");
         loadJsonData();
 
         drawerLayout = findViewById(R.id.drawer_layout);

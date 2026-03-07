@@ -204,4 +204,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.close();
         return scpList;
     }
+
+    public void deleteSCP(String number) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        db.delete(TABLE_SCP, COLUMN_NUMBER + "=?", new String[]{number});
+        db.close();
+    }
 }
