@@ -73,8 +73,7 @@ public class DetailActivity extends AppCompatActivity {
                 if (file.exists()) {
                     if (file.delete()) {
                         Toast.makeText(this, "Файл удален", Toast.LENGTH_SHORT).show();
-                        String number = scp.getNumber().toLowerCase().replace("scp-", "");
-                        String url = "https://scpfoundation.net/scp-" + number;
+                        String url = getUrlForSCP(scp);
                         webView.getSettings().setJavaScriptEnabled(true);
                         webView.getSettings().setBlockNetworkLoads(false);
                         webView.loadUrl(url);
@@ -86,6 +85,35 @@ public class DetailActivity extends AppCompatActivity {
             if (intent.getBooleanExtra("auto_download", false)) {
                 // Будет вызвано после загрузки страницы в onPageFinished для надежности
             }
+    }
+
+    private String getUrlForSCP(SCPObject scp) {
+        String rawNumber = scp.getNumber().toLowerCase().trim();
+        String urlPart;
+        
+        if (rawNumber.startsWith("scp-")) {
+            urlPart = rawNumber;
+        } else if (rawNumber.startsWith("spc-") || rawNumber.startsWith("skp-")) {
+            urlPart = rawNumber;
+        } else if (rawNumber.contains("кодовое имя:")) {
+            urlPart = rawNumber.replace("кодовое имя:", "").trim().replace(" ", "-").replace("/", "-");
+            // Особая логика для предложений, которые мы знаем
+            if (urlPart.equals("daveyoufool")) {
+                urlPart = "daveyoufool-s-proposal-j";
+            } else if (urlPart.equals("директор-болд-j")) {
+                urlPart = "director-bold-j-proposal";
+            }
+        } else if (rawNumber.startsWith("файл №")) {
+            urlPart = rawNumber.replace("файл №", "").trim().toLowerCase();
+            if (urlPart.startsWith("cn-")) {
+                urlPart = "scp-cn-" + urlPart.substring(3);
+            }
+        } else {
+            urlPart = "scp-" + rawNumber;
+        }
+        
+        urlPart = urlPart.replace("--", "-").replace(":", "");
+        return "https://scpfoundation.net/" + urlPart;
     }
 
     private void saveOffline() {
@@ -163,8 +191,7 @@ public class DetailActivity extends AppCompatActivity {
 
     private void loadArticle() {
         File file = new File(getFilesDir(), scp.getNumber() + ".html");
-        String number = scp.getNumber().toLowerCase().replace("scp-", "");
-        String url = "https://scpfoundation.net/scp-" + number;
+        String url = getUrlForSCP(scp);
 
         if (file.exists()) {
             webView.getSettings().setJavaScriptEnabled(true);
